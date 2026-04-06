@@ -107,6 +107,18 @@ claude mcp add scouter \
   -- npx -y scouter-mcp-server
 ```
 
+설정을 나중에 수정하려면 `~/.claude.json`을 직접 편집하거나, 삭제 후 다시 추가:
+
+```bash
+claude mcp remove scouter
+claude mcp add scouter \
+  -e SCOUTER_TCP_HOST=새주소 \
+  -e SCOUTER_TCP_PORT=6100 \
+  -e SCOUTER_API_ID=admin \
+  -e SCOUTER_API_PASSWORD=your-password \
+  -- npx -y scouter-mcp-server
+```
+
 ## 도구 목록
 
 ### 성능 조사

@@ -107,6 +107,18 @@ claude mcp add scouter \
   -- npx -y scouter-mcp-server
 ```
 
+To update the configuration later, edit `~/.claude.json` directly or remove and re-add:
+
+```bash
+claude mcp remove scouter
+claude mcp add scouter \
+  -e SCOUTER_TCP_HOST=new-host \
+  -e SCOUTER_TCP_PORT=6100 \
+  -e SCOUTER_API_ID=admin \
+  -e SCOUTER_API_PASSWORD=your-password \
+  -- npx -y scouter-mcp-server
+```
+
 ## Tools
 
 ### Performance Investigation
