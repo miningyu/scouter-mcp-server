@@ -45,6 +45,8 @@ Set environment variables to point at your Scouter collector:
 
 **Claude Desktop** (`claude_desktop_config.json`):
 
+HTTP mode:
+
 ```json
 {
   "mcpServers": {
@@ -61,13 +63,43 @@ Set environment variables to point at your Scouter collector:
 }
 ```
 
+TCP mode:
+
+```json
+{
+  "mcpServers": {
+    "scouter": {
+      "command": "node",
+      "args": ["/path/to/scouter.mcp/dist/index.js"],
+      "env": {
+        "SCOUTER_TCP_HOST": "your-scouter-server",
+        "SCOUTER_TCP_PORT": "6100",
+        "SCOUTER_API_ID": "admin",
+        "SCOUTER_API_PASSWORD": "your-password"
+      }
+    }
+  }
+}
+```
+
 **Claude Code**:
 
 ```bash
-claude mcp add scouter -- node /path/to/scouter.mcp/dist/index.js
-```
+# HTTP mode
+claude mcp add scouter \
+  -e SCOUTER_API_URL=http://your-scouter-server:6180 \
+  -e SCOUTER_API_ID=admin \
+  -e SCOUTER_API_PASSWORD=your-password \
+  -- node /path/to/scouter.mcp/dist/index.js
 
-Then set the environment variables in your shell before launching Claude Code.
+# TCP mode
+claude mcp add scouter \
+  -e SCOUTER_TCP_HOST=your-scouter-server \
+  -e SCOUTER_TCP_PORT=6100 \
+  -e SCOUTER_API_ID=admin \
+  -e SCOUTER_API_PASSWORD=your-password \
+  -- node /path/to/scouter.mcp/dist/index.js
+```
 
 ## Tools
 

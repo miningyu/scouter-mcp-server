@@ -45,6 +45,8 @@ Scouter 수집 서버를 가리키도록 환경 변수를 설정합니다:
 
 **Claude Desktop** (`claude_desktop_config.json`):
 
+HTTP 모드:
+
 ```json
 {
   "mcpServers": {
@@ -61,13 +63,43 @@ Scouter 수집 서버를 가리키도록 환경 변수를 설정합니다:
 }
 ```
 
+TCP 모드:
+
+```json
+{
+  "mcpServers": {
+    "scouter": {
+      "command": "node",
+      "args": ["/path/to/scouter.mcp/dist/index.js"],
+      "env": {
+        "SCOUTER_TCP_HOST": "your-scouter-server",
+        "SCOUTER_TCP_PORT": "6100",
+        "SCOUTER_API_ID": "admin",
+        "SCOUTER_API_PASSWORD": "your-password"
+      }
+    }
+  }
+}
+```
+
 **Claude Code**:
 
 ```bash
-claude mcp add scouter -- node /path/to/scouter.mcp/dist/index.js
-```
+# HTTP 모드
+claude mcp add scouter \
+  -e SCOUTER_API_URL=http://your-scouter-server:6180 \
+  -e SCOUTER_API_ID=admin \
+  -e SCOUTER_API_PASSWORD=your-password \
+  -- node /path/to/scouter.mcp/dist/index.js
 
-Claude Code 실행 전에 셸에서 환경 변수를 설정해 주세요.
+# TCP 모드
+claude mcp add scouter \
+  -e SCOUTER_TCP_HOST=your-scouter-server \
+  -e SCOUTER_TCP_PORT=6100 \
+  -e SCOUTER_API_ID=admin \
+  -e SCOUTER_API_PASSWORD=your-password \
+  -- node /path/to/scouter.mcp/dist/index.js
+```
 
 ## 도구 목록
 
