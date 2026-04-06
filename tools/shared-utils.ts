@@ -103,9 +103,27 @@ function parseParams(paramStr: string): string[] {
   return params;
 }
 
-export function bindSqlParams(sql: string, paramStr: string | undefined | null): string {
-  if (!paramStr || paramStr.trim() === "") return sql;
-  const params = parseParams(paramStr);
+const LITERAL_PLACEHOLDER_RE = /@\{\d+\}/g;
+
+function stripSideChar(s: string, ch: string): string {
+  if (s.length >= 2 && s[0] === ch && s[s.length - 1] === ch) {
+    return s.slice(1, -1);
+  }
+  return s;
+}
+
+function unescapeLiteralSql(sql: string, params: string[]): { sql: string; remainingParams: string[] } {
+  let paramIndex = 0;
+  const unescaped = sql.replace(LITERAL_PLACEHOLDER_RE, () => {
+    if (paramIndex < params.length) {
+      return stripSideChar(params[paramIndex++], "'");
+    }
+    return "";
+  });
+  return { sql: unescaped, remainingParams: params.slice(paramIndex) };
+}
+
+function replaceQuestionMarks(sql: string, params: string[]): string {
   let paramIndex = 0;
   let result = "";
   let inSingleQuote = false;
@@ -131,6 +149,14 @@ export function bindSqlParams(sql: string, paramStr: string | undefined | null):
     }
   }
   return result;
+}
+
+export function bindSqlParams(sql: string, paramStr: string | undefined | null): string {
+  if (!paramStr || paramStr.trim() === "") return sql;
+  const params = parseParams(paramStr);
+  const { sql: unescapedSql, remainingParams } = unescapeLiteralSql(sql, params);
+  if (remainingParams.length === 0) return unescapedSql;
+  return replaceQuestionMarks(unescapedSql, remainingParams);
 }
 
 // --------------- Summary Name Resolution ---------------

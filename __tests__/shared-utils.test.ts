@@ -132,4 +132,36 @@ describe("bindSqlParams", () => {
     const params = "[bytes]";
     expect(bindSqlParams(sql, params)).toBe("INSERT INTO t(data) VALUES ([bytes])");
   });
+
+  it("should replace @{N} literal placeholders before ? bind params", () => {
+    const sql = "SELECT * FROM t WHERE status = '@{1}' AND name = ?";
+    const params = "'Y','John'";
+    expect(bindSqlParams(sql, params)).toBe("SELECT * FROM t WHERE status = 'Y' AND name = 'John'");
+  });
+
+  it("should handle multiple @{N} placeholders", () => {
+    const sql = "SELECT * FROM t WHERE a = '@{1}' AND b = @{2} AND c = ?";
+    const params = "'active',100,'test'";
+    expect(bindSqlParams(sql, params)).toBe("SELECT * FROM t WHERE a = 'active' AND b = 100 AND c = 'test'");
+  });
+
+  it("should handle @{N} only (no ? placeholders)", () => {
+    const sql = "SELECT * FROM t WHERE status = '@{1}' AND flag = '@{2}'";
+    const params = "'Y','N'";
+    expect(bindSqlParams(sql, params)).toBe("SELECT * FROM t WHERE status = 'Y' AND flag = 'N'");
+  });
+
+  it("should handle @{N} with §-delimited params", () => {
+    const sql = "SELECT * FROM t WHERE a = '@{1}' AND b = ?";
+    const params = "'N'§'hello'";
+    expect(bindSqlParams(sql, params)).toBe("SELECT * FROM t WHERE a = 'N' AND b = 'hello'");
+  });
+
+  it("should handle real-world Scouter SQL with mixed @{N} and ? placeholders", () => {
+    const sql = "SELECT coalesce(c.yn, '@{1}') FROM t WHERE ptl_id = ? AND chnl_id = ? AND kind != '@{2}' LIMIT ?::numeric";
+    const params = "'N','DEFAULT','PTL001','CH001',50";
+    expect(bindSqlParams(sql, params)).toBe(
+      "SELECT coalesce(c.yn, 'N') FROM t WHERE ptl_id = 'PTL001' AND chnl_id = 'CH001' AND kind != 'DEFAULT' LIMIT 50::numeric"
+    );
+  });
 });
