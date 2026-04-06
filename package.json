@@ -1,6 +1,6 @@
 {
   "name": "scouter-mcp-server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP server for Scouter APM - enables AI agents to query and analyze application performance data",
   "type": "module",
   "main": "dist/index.js",
@@ -27,6 +27,17 @@
   },
   "files": [
     "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/miningyu/scouter-mcp-server.git"
+  },
+  "homepage": "https://github.com/miningyu/scouter-mcp-server#readme",
+  "keywords": [
+    "mcp",
+    "scouter",
+    "apm",
+    "monitoring"
   ],
   "engines": {
     "node": ">=18.0.0"
