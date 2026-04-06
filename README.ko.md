@@ -88,18 +88,18 @@ TCP 모드:
 }
 ```
 
-**Claude Code**:
+**Claude Code** (`-s user`로 글로벌 등록하면 모든 프로젝트에서 사용 가능):
 
 ```bash
 # HTTP 모드
-claude mcp add scouter \
+claude mcp add scouter -s user \
   -e SCOUTER_API_URL=http://your-scouter-server:6180 \
   -e SCOUTER_API_ID=admin \
   -e SCOUTER_API_PASSWORD=your-password \
   -- npx -y scouter-mcp-server
 
 # TCP 모드
-claude mcp add scouter \
+claude mcp add scouter -s user \
   -e SCOUTER_TCP_HOST=your-scouter-server \
   -e SCOUTER_TCP_PORT=6100 \
   -e SCOUTER_API_ID=admin \
@@ -110,8 +110,8 @@ claude mcp add scouter \
 설정을 나중에 수정하려면 `~/.claude.json`을 직접 편집하거나, 삭제 후 다시 추가:
 
 ```bash
-claude mcp remove scouter
-claude mcp add scouter \
+claude mcp remove scouter -s user
+claude mcp add scouter -s user \
   -e SCOUTER_TCP_HOST=새주소 \
   -e SCOUTER_TCP_PORT=6100 \
   -e SCOUTER_API_ID=admin \

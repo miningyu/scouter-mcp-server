@@ -88,18 +88,18 @@ TCP mode:
 }
 ```
 
-**Claude Code**:
+**Claude Code** (use `-s user` to register globally across all projects):
 
 ```bash
 # HTTP mode
-claude mcp add scouter \
+claude mcp add scouter -s user \
   -e SCOUTER_API_URL=http://your-scouter-server:6180 \
   -e SCOUTER_API_ID=admin \
   -e SCOUTER_API_PASSWORD=your-password \
   -- npx -y scouter-mcp-server
 
 # TCP mode
-claude mcp add scouter \
+claude mcp add scouter -s user \
   -e SCOUTER_TCP_HOST=your-scouter-server \
   -e SCOUTER_TCP_PORT=6100 \
   -e SCOUTER_API_ID=admin \
@@ -110,8 +110,8 @@ claude mcp add scouter \
 To update the configuration later, edit `~/.claude.json` directly or remove and re-add:
 
 ```bash
-claude mcp remove scouter
-claude mcp add scouter \
+claude mcp remove scouter -s user
+claude mcp add scouter -s user \
   -e SCOUTER_TCP_HOST=new-host \
   -e SCOUTER_TCP_PORT=6100 \
   -e SCOUTER_API_ID=admin \
