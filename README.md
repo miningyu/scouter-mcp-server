@@ -16,7 +16,13 @@ Ask your AI assistant things like *"What's the slowest SQL in the last hour?"* o
 
 ## Quick Start
 
-### 1. Install
+### Using npx (no install needed)
+
+```bash
+npx scouter-mcp-server
+```
+
+### Or install from source
 
 ```bash
 cd scouter.mcp
@@ -24,7 +30,7 @@ npm install
 npm run build
 ```
 
-### 2. Configure
+### Configure
 
 Set environment variables to point at your Scouter collector:
 
@@ -51,8 +57,8 @@ HTTP mode:
 {
   "mcpServers": {
     "scouter": {
-      "command": "node",
-      "args": ["/path/to/scouter.mcp/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "scouter-mcp-server"],
       "env": {
         "SCOUTER_API_URL": "http://your-scouter-server:6180",
         "SCOUTER_API_ID": "admin",
@@ -69,8 +75,8 @@ TCP mode:
 {
   "mcpServers": {
     "scouter": {
-      "command": "node",
-      "args": ["/path/to/scouter.mcp/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "scouter-mcp-server"],
       "env": {
         "SCOUTER_TCP_HOST": "your-scouter-server",
         "SCOUTER_TCP_PORT": "6100",
@@ -90,7 +96,7 @@ claude mcp add scouter \
   -e SCOUTER_API_URL=http://your-scouter-server:6180 \
   -e SCOUTER_API_ID=admin \
   -e SCOUTER_API_PASSWORD=your-password \
-  -- node /path/to/scouter.mcp/dist/index.js
+  -- npx -y scouter-mcp-server
 
 # TCP mode
 claude mcp add scouter \
@@ -98,7 +104,7 @@ claude mcp add scouter \
   -e SCOUTER_TCP_PORT=6100 \
   -e SCOUTER_API_ID=admin \
   -e SCOUTER_API_PASSWORD=your-password \
-  -- node /path/to/scouter.mcp/dist/index.js
+  -- npx -y scouter-mcp-server
 ```
 
 ## Tools

@@ -16,7 +16,13 @@
 
 ## 빠른 시작
 
-### 1. 설치
+### npx로 바로 실행 (설치 불필요)
+
+```bash
+npx scouter-mcp-server
+```
+
+### 또는 소스에서 직접 빌드
 
 ```bash
 cd scouter.mcp
@@ -24,7 +30,7 @@ npm install
 npm run build
 ```
 
-### 2. 환경 변수 설정
+### 환경 변수 설정
 
 Scouter 수집 서버를 가리키도록 환경 변수를 설정합니다:
 
@@ -51,8 +57,8 @@ HTTP 모드:
 {
   "mcpServers": {
     "scouter": {
-      "command": "node",
-      "args": ["/path/to/scouter.mcp/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "scouter-mcp-server"],
       "env": {
         "SCOUTER_API_URL": "http://your-scouter-server:6180",
         "SCOUTER_API_ID": "admin",
@@ -69,8 +75,8 @@ TCP 모드:
 {
   "mcpServers": {
     "scouter": {
-      "command": "node",
-      "args": ["/path/to/scouter.mcp/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "scouter-mcp-server"],
       "env": {
         "SCOUTER_TCP_HOST": "your-scouter-server",
         "SCOUTER_TCP_PORT": "6100",
@@ -90,7 +96,7 @@ claude mcp add scouter \
   -e SCOUTER_API_URL=http://your-scouter-server:6180 \
   -e SCOUTER_API_ID=admin \
   -e SCOUTER_API_PASSWORD=your-password \
-  -- node /path/to/scouter.mcp/dist/index.js
+  -- npx -y scouter-mcp-server
 
 # TCP 모드
 claude mcp add scouter \
@@ -98,7 +104,7 @@ claude mcp add scouter \
   -e SCOUTER_TCP_PORT=6100 \
   -e SCOUTER_API_ID=admin \
   -e SCOUTER_API_PASSWORD=your-password \
-  -- node /path/to/scouter.mcp/dist/index.js
+  -- npx -y scouter-mcp-server
 ```
 
 ## 도구 목록
