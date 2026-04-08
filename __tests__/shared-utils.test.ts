@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { truncate, pctOfTotal, enrichSummary, buildResponse, bindSqlParams } from "../tools/shared-utils.js";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { truncate, pctOfTotal, enrichSummary, buildResponse, bindSqlParams, isMaskPiiEnabled, maskXLogPii, maskRawResult } from "../tools/shared-utils.js";
 
 describe("truncate", () => {
   it("should return string as-is when within limit", () => {
@@ -163,5 +163,107 @@ describe("bindSqlParams", () => {
     expect(bindSqlParams(sql, params)).toBe(
       "SELECT coalesce(c.yn, 'N') FROM t WHERE ptl_id = 'PTL001' AND chnl_id = 'CH001' AND kind != 'DEFAULT' LIMIT 50::numeric"
     );
+  });
+
+  it("should return SQL template when SCOUTER_MASK_PII is true", () => {
+    process.env.SCOUTER_MASK_PII = "true";
+    try {
+      const sql = "SELECT * FROM users WHERE name=? AND age=?";
+      expect(bindSqlParams(sql, "'John',30")).toBe(sql);
+    } finally {
+      delete process.env.SCOUTER_MASK_PII;
+    }
+  });
+});
+
+describe("isMaskPiiEnabled", () => {
+  afterEach(() => { delete process.env.SCOUTER_MASK_PII; });
+
+  it("should return false by default", () => {
+    expect(isMaskPiiEnabled()).toBe(false);
+  });
+
+  it("should return true when SCOUTER_MASK_PII=true", () => {
+    process.env.SCOUTER_MASK_PII = "true";
+    expect(isMaskPiiEnabled()).toBe(true);
+  });
+
+  it("should return false for other values", () => {
+    process.env.SCOUTER_MASK_PII = "false";
+    expect(isMaskPiiEnabled()).toBe(false);
+  });
+});
+
+describe("maskXLogPii", () => {
+  afterEach(() => { delete process.env.SCOUTER_MASK_PII; });
+
+  it("should return entry unchanged when disabled", () => {
+    const entry = { ipaddr: "192.168.1.100", login: "admin", elapsed: 500 };
+    expect(maskXLogPii(entry)).toEqual(entry);
+  });
+
+  it("should mask IP addresses (all field name variants)", () => {
+    process.env.SCOUTER_MASK_PII = "true";
+    const entry = { ipaddr: "192.168.1.100", ipAddr: "10.0.0.5", ip: "172.16.0.1" };
+    const result = maskXLogPii(entry);
+    expect(result.ipaddr).toBe("192.168.1.***");
+    expect(result.ipAddr).toBe("10.0.0.***");
+    expect(result.ip).toBe("172.16.0.***");
+  });
+
+  it("should mask login IDs", () => {
+    process.env.SCOUTER_MASK_PII = "true";
+    expect(maskXLogPii({ login: "username" }).login).toBe("us****me");
+    expect(maskXLogPii({ login: "ab" }).login).toBe("**");
+    expect(maskXLogPii({ login: "a" }).login).toBe("**");
+  });
+
+  it("should not mask empty login", () => {
+    process.env.SCOUTER_MASK_PII = "true";
+    expect(maskXLogPii({ login: "" }).login).toBe("");
+  });
+
+  it("should mask userAgent and ua", () => {
+    process.env.SCOUTER_MASK_PII = "true";
+    const entry = { userAgent: "Mozilla/5.0", ua: "Chrome" };
+    const result = maskXLogPii(entry);
+    expect(result.userAgent).toBe("[masked]");
+    expect(result.ua).toBe("[masked]");
+  });
+
+  it("should preserve non-PII fields", () => {
+    process.env.SCOUTER_MASK_PII = "true";
+    const entry = { elapsed: 500, service: 12345, ipaddr: "1.2.3.4" };
+    const result = maskXLogPii(entry);
+    expect(result.elapsed).toBe(500);
+    expect(result.service).toBe(12345);
+  });
+});
+
+describe("maskRawResult", () => {
+  afterEach(() => { delete process.env.SCOUTER_MASK_PII; });
+
+  it("should mask array of objects", () => {
+    process.env.SCOUTER_MASK_PII = "true";
+    const data = [{ ipaddr: "1.2.3.4", login: "user1" }, { ipaddr: "5.6.7.8" }];
+    const result = maskRawResult(data) as Array<Record<string, unknown>>;
+    expect(result[0].ipaddr).toBe("1.2.3.***");
+    expect(result[0].login).toBe("us****r1");
+    expect(result[1].ipaddr).toBe("5.6.7.***");
+  });
+
+  it("should mask single object", () => {
+    process.env.SCOUTER_MASK_PII = "true";
+    const data = { ipaddr: "10.0.0.1", login: "admin" };
+    const result = maskRawResult(data) as Record<string, unknown>;
+    expect(result.ipaddr).toBe("10.0.0.***");
+    expect(result.login).toBe("ad****in");
+  });
+
+  it("should return primitives as-is", () => {
+    process.env.SCOUTER_MASK_PII = "true";
+    expect(maskRawResult("hello")).toBe("hello");
+    expect(maskRawResult(42)).toBe(42);
+    expect(maskRawResult(null)).toBe(null);
   });
 });

@@ -36,7 +36,7 @@ export class ScouterTcpConnection {
     await new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => {
         socket.destroy();
-        reject(new Error(`Connection timeout to ${this.host}:${this.port}`));
+        reject(new Error("Scouter TCP connection timeout"));
       }, CONNECT_TIMEOUT);
 
       socket.connect(this.port, this.host, () => {
@@ -93,7 +93,7 @@ export class ScouterTcpConnection {
       }
       if (this.session === 0n) {
         const errorMsg = result.data["error"];
-        throw new Error(`Scouter login failed: ${errorMsg ?? "unknown error"}`);
+        throw new Error("Scouter login failed: authentication error");
       }
     }
   }

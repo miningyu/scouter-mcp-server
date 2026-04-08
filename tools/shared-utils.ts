@@ -37,6 +37,7 @@ export function enrichSummary(item: {
 
 export function buildResponse(output: Record<string, unknown>, warnings: string[]) {
   if (warnings.length > 0) output.warnings = warnings;
+  if (isMaskPiiEnabled()) output.piiMasked = "Fields marked [masked] contain data that is hidden by SCOUTER_MASK_PII. Disable this env var to see actual values.";
   return { content: [{ type: "text" as const, text: jsonStringify(output) }] };
 }
 
@@ -153,6 +154,7 @@ function replaceQuestionMarks(sql: string, params: string[]): string {
 
 export function bindSqlParams(sql: string, paramStr: string | undefined | null): string {
   if (!paramStr || paramStr.trim() === "") return sql;
+  if (isMaskPiiEnabled()) return sql;
   const params = parseParams(paramStr);
   const { sql: unescapedSql, remainingParams } = unescapeLiteralSql(sql, params);
   if (remainingParams.length === 0) return unescapedSql;
@@ -194,4 +196,40 @@ export async function resolveSummaryNames(
     }
   }
   return unresolvedCount;
+}
+
+// --------------- PII Masking ---------------
+
+export function isMaskPiiEnabled(): boolean {
+  return process.env.SCOUTER_MASK_PII === "true";
+}
+
+function maskIp(ip: string): string {
+  const lastDot = ip.lastIndexOf(".");
+  return lastDot > 0 ? ip.slice(0, lastDot + 1) + "***" : "***";
+}
+
+function maskLogin(login: string): string {
+  if (login.length <= 2) return "**";
+  return login.slice(0, 2) + "****" + login.slice(-2);
+}
+
+export function maskXLogPii<T extends Record<string, unknown>>(entry: T): T {
+  if (!isMaskPiiEnabled()) return entry;
+  const masked: Record<string, unknown> = { ...entry };
+  if (typeof masked.ipaddr === "string") masked.ipaddr = maskIp(masked.ipaddr);
+  if (typeof masked.ipAddr === "string") masked.ipAddr = maskIp(masked.ipAddr);
+  if (typeof masked.ip === "string") masked.ip = maskIp(masked.ip);
+  if (typeof masked.login === "string" && masked.login) masked.login = maskLogin(masked.login);
+  if (typeof masked.userAgent === "string") masked.userAgent = "[masked]";
+  if (typeof masked.ua === "string") masked.ua = "[masked]";
+  return masked as T;
+}
+
+export function maskRawResult(result: unknown): unknown {
+  if (Array.isArray(result)) return result.map(item =>
+    item !== null && typeof item === "object" ? maskXLogPii(item as Record<string, unknown>) : item
+  );
+  if (result !== null && typeof result === "object") return maskXLogPii(result as Record<string, unknown>);
+  return result;
 }

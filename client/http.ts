@@ -58,6 +58,10 @@ export class HttpClient implements ScouterClient {
     return headers;
   }
 
+  private stripPrefix(url: string): string {
+    return url.startsWith(this.apiPrefix) ? url.slice(this.apiPrefix.length) : url;
+  }
+
   async fetchJson<T>(path: string): Promise<T> {
     await this.ensureAuth();
     const sep = path.includes("?") ? "&" : "?";
@@ -73,7 +77,7 @@ export class HttpClient implements ScouterClient {
       }
       if (!res.ok) {
         const errorBody = await res.text().catch(() => "");
-        throw new Error(`Scouter API error: ${res.status} ${res.statusText} - ${url}${errorBody ? ` - ${errorBody}` : ""}`);
+        throw new Error(`Scouter API error: ${res.status} ${res.statusText} - ${this.stripPrefix(url)}${errorBody ? ` - ${errorBody}` : ""}`);
       }
       const body = await res.json() as Record<string, unknown>;
       return (body.result ?? body) as T;
@@ -105,7 +109,7 @@ export class HttpClient implements ScouterClient {
       }
       if (!res.ok) {
         const errorBody = await res.text().catch(() => "");
-        throw new Error(`Scouter API error: ${res.status} ${res.statusText} - ${url}${errorBody ? ` - ${errorBody}` : ""}`);
+        throw new Error(`Scouter API error: ${res.status} ${res.statusText} - ${this.stripPrefix(url)}${errorBody ? ` - ${errorBody}` : ""}`);
       }
       const json = await res.json() as Record<string, unknown>;
       return (json.result ?? json) as T;
@@ -137,7 +141,7 @@ export class HttpClient implements ScouterClient {
       }
       if (!res.ok) {
         const errorBody = await res.text().catch(() => "");
-        throw new Error(`Scouter API error: ${res.status} ${res.statusText} - ${url}${errorBody ? ` - ${errorBody}` : ""}`);
+        throw new Error(`Scouter API error: ${res.status} ${res.statusText} - ${this.stripPrefix(url)}${errorBody ? ` - ${errorBody}` : ""}`);
       }
       const json = await res.json() as Record<string, unknown>;
       return (json.result ?? json) as T;

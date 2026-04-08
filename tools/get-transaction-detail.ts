@@ -2,7 +2,7 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { client, jsonStringify, catchWarn } from "../client/index.js";
 import { todayYmd } from "../time-utils.js";
-import { resolveHashes, resolveOrHash, bindSqlParams } from "./shared-utils.js";
+import { resolveHashes, resolveOrHash, bindSqlParams, maskXLogPii, isMaskPiiEnabled } from "./shared-utils.js";
 
 export const params = {
   txid: z.string().describe("Transaction ID (from search_transactions or list_active_services)"),
@@ -56,20 +56,26 @@ async function handler({ txid, date, max_steps }: { txid: string; date?: string;
     resolveHashes(hashedMsgHashes, "service", d),
   ]);
 
-  const resolvedTx = tx ? {
+  const resolvedTx = tx ? maskXLogPii({
     ...tx,
     serviceName: resolveOrHash(serviceHash, serviceMap),
     errorMessage: errorHash ? resolveOrHash(errorHash, errorMap) : undefined,
-  } : null;
+  }) : null;
+
+  const maskPii = isMaskPiiEnabled();
 
   const resolvedSteps = steps.map(s => {
     const hash = Number(s.hash) || 0;
-    switch (s.stepType) {
-      case "SQL": return { ...s, name: resolveOrHash(hash, sqlMap) };
-      case "METHOD": return { ...s, name: resolveOrHash(hash, methodMap) };
-      case "APICALL": return { ...s, name: resolveOrHash(hash, apicallMap) };
-      case "HASHED_MESSAGE": return { ...s, text: resolveOrHash(hash, hashedMsgMap) };
-      default: return s;
+    const base = maskPii && s.param !== undefined ? { ...s, param: "[masked]" } : s;
+    const nested = maskPii && base.step && typeof base.step === "object" && (base.step as Record<string, unknown>).param !== undefined
+      ? { ...base, step: { ...(base.step as Record<string, unknown>), param: "[masked]" } }
+      : base;
+    switch (nested.stepType) {
+      case "SQL": return { ...nested, name: resolveOrHash(hash, sqlMap) };
+      case "METHOD": return { ...nested, name: resolveOrHash(hash, methodMap) };
+      case "APICALL": return { ...nested, name: resolveOrHash(hash, apicallMap) };
+      case "HASHED_MESSAGE": return { ...nested, text: resolveOrHash(hash, hashedMsgMap) };
+      default: return nested;
     }
   });
 
@@ -85,7 +91,7 @@ async function handler({ txid, date, max_steps }: { txid: string; date?: string;
         index: i,
         sql: sqlText,
         elapsed: s.elapsed,
-        param: paramStr,
+        param: isMaskPiiEnabled() ? "[masked]" : paramStr,
         executableSql: bindSqlParams(sqlText, paramStr),
       };
     });
@@ -123,6 +129,7 @@ async function handler({ txid, date, max_steps }: { txid: string; date?: string;
     },
   };
   if (warnings.length > 0) output.warnings = warnings;
+  if (isMaskPiiEnabled()) output.piiMasked = "Fields marked [masked] contain data that is hidden by SCOUTER_MASK_PII. Disable this env var to see actual values.";
 
   return { content: [{ type: "text" as const, text: jsonStringify(output) }] };
 }

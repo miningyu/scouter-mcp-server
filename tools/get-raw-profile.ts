@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { client, jsonStringify, catchWarn } from "../client/index.js";
+import { isMaskPiiEnabled } from "./shared-utils.js";
 
 export const params = {
   date: z.string().describe("Date in YYYYMMDD format"),
@@ -24,12 +25,18 @@ async function handler(args: { date: string; txid: string }) {
     null, warnings, "rawProfile",
   );
 
+  const maskedProfile = isMaskPiiEnabled() && Array.isArray(profile)
+    ? profile.map((step: Record<string, unknown>) =>
+        step.param !== undefined ? { ...step, param: "[masked]" } : step)
+    : profile;
+
   const output: Record<string, unknown> = {
     date: args.date,
     txid: args.txid,
-    profile,
+    profile: maskedProfile,
   };
   if (warnings.length > 0) output.warnings = warnings;
+  if (isMaskPiiEnabled()) output.piiMasked = "Fields marked [masked] contain data that is hidden by SCOUTER_MASK_PII. Disable this env var to see actual values.";
 
   return { content: [{ type: "text" as const, text: jsonStringify(output) }] };
 }

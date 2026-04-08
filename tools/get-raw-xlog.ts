@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { client, jsonStringify, catchWarn } from "../client/index.js";
+import { maskRawResult, isMaskPiiEnabled } from "./shared-utils.js";
 
 
 export const params = {
@@ -104,8 +105,10 @@ async function handler(args: Args) {
     }
   }
 
-  const output: Record<string, unknown> = { mode: args.mode, result };
+  const maskedResult = isMaskPiiEnabled() ? maskRawResult(result) : result;
+  const output: Record<string, unknown> = { mode: args.mode, result: maskedResult };
   if (warnings.length > 0) output.warnings = warnings;
+  if (isMaskPiiEnabled()) output.piiMasked = "Fields marked [masked] contain data that is hidden by SCOUTER_MASK_PII. Disable this env var to see actual values.";
 
   return { content: [{ type: "text" as const, text: jsonStringify(output) }] };
 }
