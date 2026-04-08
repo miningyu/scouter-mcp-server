@@ -201,7 +201,7 @@ export async function resolveSummaryNames(
 // --------------- PII Masking ---------------
 
 export function isMaskPiiEnabled(): boolean {
-  return process.env.SCOUTER_MASK_PII === "true";
+  return process.env.SCOUTER_MASK_PII !== "false";
 }
 
 function maskIp(ip: string): string {

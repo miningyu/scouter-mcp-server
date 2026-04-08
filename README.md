@@ -44,7 +44,7 @@ Set environment variables to point at your Scouter collector:
 | `SCOUTER_TCP_PORT` | TCP direct connection port | `6100` |
 | `SCOUTER_PROTOCOL` | Force `http` or `tcp` | auto-detect |
 | `SCOUTER_ENABLE_WRITE` | Set to `true` to enable write tools | *(disabled)* |
-| `SCOUTER_MASK_PII` | Set to `true` to mask PII in responses (IP, login, userAgent, SQL params) | *(disabled)* |
+| `SCOUTER_MASK_PII` | Set to `false` to disable PII masking in responses (IP, login, userAgent, SQL params) | `true` |
 
 **HTTP mode** (recommended) — set `SCOUTER_API_URL`. Supports all 32 tools (write tools require `SCOUTER_ENABLE_WRITE=true`).
 **TCP mode** — set `SCOUTER_TCP_HOST`. Lightweight, no webapp needed, but some admin tools are unavailable.

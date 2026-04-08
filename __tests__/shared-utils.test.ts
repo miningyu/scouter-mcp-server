@@ -78,6 +78,9 @@ describe("buildResponse", () => {
 });
 
 describe("bindSqlParams", () => {
+  beforeEach(() => { process.env.SCOUTER_MASK_PII = "false"; });
+  afterEach(() => { delete process.env.SCOUTER_MASK_PII; });
+
   it("should substitute comma-separated params into ? placeholders", () => {
     const sql = "SELECT * FROM users WHERE name=? AND age=?";
     const params = "'John',30";
@@ -165,22 +168,19 @@ describe("bindSqlParams", () => {
     );
   });
 
-  it("should return SQL template when SCOUTER_MASK_PII is true", () => {
-    process.env.SCOUTER_MASK_PII = "true";
-    try {
-      const sql = "SELECT * FROM users WHERE name=? AND age=?";
-      expect(bindSqlParams(sql, "'John',30")).toBe(sql);
-    } finally {
-      delete process.env.SCOUTER_MASK_PII;
-    }
+  it("should return SQL template when SCOUTER_MASK_PII is not false", () => {
+    delete process.env.SCOUTER_MASK_PII;
+    const sql = "SELECT * FROM users WHERE name=? AND age=?";
+    expect(bindSqlParams(sql, "'John',30")).toBe(sql);
   });
 });
 
 describe("isMaskPiiEnabled", () => {
   afterEach(() => { delete process.env.SCOUTER_MASK_PII; });
 
-  it("should return false by default", () => {
-    expect(isMaskPiiEnabled()).toBe(false);
+  it("should return true by default (not set)", () => {
+    delete process.env.SCOUTER_MASK_PII;
+    expect(isMaskPiiEnabled()).toBe(true);
   });
 
   it("should return true when SCOUTER_MASK_PII=true", () => {
@@ -188,7 +188,7 @@ describe("isMaskPiiEnabled", () => {
     expect(isMaskPiiEnabled()).toBe(true);
   });
 
-  it("should return false for other values", () => {
+  it("should return false only when explicitly set to false", () => {
     process.env.SCOUTER_MASK_PII = "false";
     expect(isMaskPiiEnabled()).toBe(false);
   });
@@ -197,7 +197,8 @@ describe("isMaskPiiEnabled", () => {
 describe("maskXLogPii", () => {
   afterEach(() => { delete process.env.SCOUTER_MASK_PII; });
 
-  it("should return entry unchanged when disabled", () => {
+  it("should return entry unchanged when explicitly disabled", () => {
+    process.env.SCOUTER_MASK_PII = "false";
     const entry = { ipaddr: "192.168.1.100", login: "admin", elapsed: 500 };
     expect(maskXLogPii(entry)).toEqual(entry);
   });

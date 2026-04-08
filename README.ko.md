@@ -44,7 +44,7 @@ Scouter 수집 서버를 가리키도록 환경 변수를 설정합니다:
 | `SCOUTER_TCP_PORT` | TCP 직접 연결 포트 | `6100` |
 | `SCOUTER_PROTOCOL` | `http` 또는 `tcp` 강제 지정 | 자동 감지 |
 | `SCOUTER_ENABLE_WRITE` | `true`로 설정 시 쓰기 도구 활성화 | *(비활성)* |
-| `SCOUTER_MASK_PII` | `true`로 설정 시 응답에서 PII 마스킹 (IP, 로그인, UserAgent, SQL 파라미터) | *(비활성)* |
+| `SCOUTER_MASK_PII` | `false`로 설정 시 PII 마스킹 비활성화 (IP, 로그인, UserAgent, SQL 파라미터) | `true` |
 
 **HTTP 모드** (권장) — `SCOUTER_API_URL` 설정. 32개 도구 모두 지원 (쓰기 도구는 `SCOUTER_ENABLE_WRITE=true` 필요).
 **TCP 모드** — `SCOUTER_TCP_HOST` 설정. 경량, webapp 불필요. 일부 관리 도구 미지원.
