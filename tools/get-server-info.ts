@@ -34,7 +34,22 @@ async function handler(args: { include_counter_model?: boolean }) {
     const output: Record<string, unknown> = {
       servers: serverInfo,
     };
-    if (counterModel !== null) output.counterModel = counterModel;
+    if (counterModel !== null) {
+      const raw = counterModel as Record<string, unknown>;
+      const families = raw.families as Array<Record<string, unknown>> | undefined;
+      if (families) {
+        output.counterModel = families
+          .map(f => ({
+            family: f.name,
+            counters: (f.counters as Array<Record<string, unknown>> | undefined)?.map(c => ({
+              name: c.name, displayName: c.displayName, unit: c.unit,
+            })) ?? [],
+          }))
+          .filter(f => f.counters.length > 0);
+      } else {
+        output.counterModel = counterModel;
+      }
+    }
     if (warnings.length > 0) output.warnings = warnings;
 
     return { content: [{ type: "text" as const, text: jsonStringify(output) }] };

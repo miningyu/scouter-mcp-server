@@ -199,7 +199,11 @@ async function handler(args: { obj_type?: string; time_range_minutes?: number })
   const topSlowSqls = allSqls
     .sort((a, b) => n(b.elapsedSum) - n(a.elapsedSum))
     .slice(0, 5)
-    .map(s => ({ sql: s.summaryKeyName, count: n(s.count), avgElapsed: n(s.count) > 0 ? Math.round(n(s.elapsedSum) / n(s.count)) : 0 }));
+    .map(s => {
+      const raw = s.summaryKeyName ?? "";
+      const sql = raw.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\s+/g, " ").trim();
+      return { sql: sql.length > 300 ? sql.slice(0, 300) + "..." : sql, count: n(s.count), avgElapsed: n(s.count) > 0 ? Math.round(n(s.elapsedSum) / n(s.count)) : 0 };
+    });
   const topErrorServices = allServices
     .filter(s => n(s.errorCount) > 0)
     .sort((a, b) => n(b.errorCount) - n(a.errorCount))

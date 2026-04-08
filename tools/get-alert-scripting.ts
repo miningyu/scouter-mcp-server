@@ -27,9 +27,13 @@ async function handler(args: { counter_name: string; include_compile_log?: boole
       null, warnings, "alertScripting",
     );
 
+    const slim = scripting !== null && typeof scripting === "object"
+      ? (({ realCounterDescMap: _, pluginHelperDescMap: _2, ...rest }) => rest)(scripting as Record<string, unknown>)
+      : scripting;
+
     const output: Record<string, unknown> = {
       counterName: args.counter_name,
-      scripting,
+      scripting: slim,
     };
 
     if (args.include_compile_log && args.log_loop !== undefined && args.log_index !== undefined) {

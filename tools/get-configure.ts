@@ -17,6 +17,18 @@ export function register(server: McpServer) {
   }, handler);
 }
 
+function stripConfigBloat(config: unknown): unknown {
+  if (config === null || typeof config !== "object") return config;
+  const raw = config as Record<string, unknown>;
+  const { descMap: _, valueTypeMap: _2, valueTypeDescMap: _3, ...rest } = raw;
+  if (rest.configStateList && Array.isArray(rest.configStateList)) {
+    rest.configStateList = (rest.configStateList as Array<Record<string, unknown>>)
+      .filter(item => String(item.value) !== String(item.def))
+      .map(({ key, value, def }) => ({ key, value, def }));
+  }
+  return rest;
+}
+
 async function handler(args: { obj_hash?: number }) {
   try {
     const warnings: string[] = [];
@@ -29,7 +41,7 @@ async function handler(args: { obj_hash?: number }) {
       const output: Record<string, unknown> = {
         target: "agent",
         objHash: args.obj_hash,
-        config,
+        config: stripConfigBloat(config),
       };
       if (warnings.length > 0) output.warnings = warnings;
       return { content: [{ type: "text" as const, text: jsonStringify(output) }] };
@@ -41,7 +53,7 @@ async function handler(args: { obj_hash?: number }) {
     );
     const output: Record<string, unknown> = {
       target: "server",
-      config,
+      config: stripConfigBloat(config),
     };
     if (warnings.length > 0) output.warnings = warnings;
     return { content: [{ type: "text" as const, text: jsonStringify(output) }] };

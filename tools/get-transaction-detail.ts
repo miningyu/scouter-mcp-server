@@ -2,7 +2,7 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { client, jsonStringify, catchWarn } from "../client/index.js";
 import { todayYmd } from "../time-utils.js";
-import { resolveHashes, resolveOrHash, bindSqlParams, maskXLogPii, isMaskPiiEnabled } from "./shared-utils.js";
+import { resolveHashes, resolveOrHash, bindSqlParams, compactXLog, isMaskPiiEnabled } from "./shared-utils.js";
 
 export const params = {
   txid: z.string().describe("Transaction ID (from search_transactions or list_active_services)"),
@@ -56,7 +56,7 @@ async function handler({ txid, date, max_steps }: { txid: string; date?: string;
     resolveHashes(hashedMsgHashes, "service", d),
   ]);
 
-  const resolvedTx = tx ? maskXLogPii({
+  const resolvedTx = tx ? compactXLog({
     ...tx,
     serviceName: resolveOrHash(serviceHash, serviceMap),
     errorMessage: errorHash ? resolveOrHash(errorHash, errorMap) : undefined,
@@ -64,26 +64,43 @@ async function handler({ txid, date, max_steps }: { txid: string; date?: string;
 
   const maskPii = isMaskPiiEnabled();
 
+  const flattenStep = (s: ProfileStep): Record<string, unknown> => {
+    const inner = s.step && typeof s.step === "object" ? s.step as Record<string, unknown> : {};
+    const stepTypeName = String(inner.stepTypeName ?? s.stepType ?? "");
+    const elapsed = Number(inner.elapsed ?? s.elapsed ?? 0);
+    const param = maskPii ? (inner.param !== undefined ? "[masked]" : undefined) : inner.param as string | undefined;
+    const result: Record<string, unknown> = {
+      stepType: stepTypeName,
+      mainValue: s.mainValue,
+      elapsed: elapsed || undefined,
+      index: inner.index ?? inner.order,
+      startTime: inner.start_time,
+    };
+    if (param !== undefined && param !== "") result.param = param;
+    if (inner.error && inner.error !== "0") result.error = inner.error;
+    if (inner.address) result.address = inner.address;
+    if (inner.txid) result.txid = inner.txid;
+    return result;
+  };
+
   const resolvedSteps = steps.map(s => {
-    const hash = Number(s.hash) || 0;
-    const base = maskPii && s.param !== undefined ? { ...s, param: "[masked]" } : s;
-    const nested = maskPii && base.step && typeof base.step === "object" && (base.step as Record<string, unknown>).param !== undefined
-      ? { ...base, step: { ...(base.step as Record<string, unknown>), param: "[masked]" } }
-      : base;
-    switch (nested.stepType) {
-      case "SQL": return { ...nested, name: resolveOrHash(hash, sqlMap) };
-      case "METHOD": return { ...nested, name: resolveOrHash(hash, methodMap) };
-      case "APICALL": return { ...nested, name: resolveOrHash(hash, apicallMap) };
-      case "HASHED_MESSAGE": return { ...nested, text: resolveOrHash(hash, hashedMsgMap) };
-      default: return nested;
+    const hash = Number(s.hash ?? (s.step as Record<string, unknown>)?.hash) || 0;
+    const flat = flattenStep(s);
+    switch (flat.stepType) {
+      case "SQL": case "SQL3": return { ...flat, name: resolveOrHash(hash, sqlMap) };
+      case "METHOD": return { ...flat, name: resolveOrHash(hash, methodMap) };
+      case "APICALL": return { ...flat, name: resolveOrHash(hash, apicallMap) };
+      case "HASHED_MESSAGE": return { ...flat, text: resolveOrHash(hash, hashedMsgMap) };
+      default: return flat;
     }
   });
 
   const limit = max_steps ?? 80;
   const totalStepCount = resolvedSteps.length;
 
+  const isSqlStep = (s: Record<string, unknown>) => s.stepType === "SQL" || s.stepType === "SQL3";
   const sqlSteps = resolvedSteps
-    .filter(s => s.stepType === "SQL")
+    .filter(isSqlStep)
     .map((s, i) => {
       const sqlText = String(s.name ?? s.mainValue ?? "");
       const paramStr = s.param as string | undefined;
@@ -100,14 +117,14 @@ async function handler({ txid, date, max_steps }: { txid: string; date?: string;
     .map((s, i) => ({ index: i, url: s.name ?? s.mainValue, elapsed: s.elapsed }));
 
   const significantSteps = resolvedSteps.filter(s =>
-    (s.stepType === "SQL" && (s.elapsed ?? 0) > 0) ||
+    (isSqlStep(s) && (Number(s.elapsed) || 0) > 0) ||
     (s.stepType === "APICALL") ||
-    (s.stepType === "METHOD" && (s.elapsed ?? 0) > 10)
+    (s.stepType === "METHOD" && (Number(s.elapsed) || 0) > 10)
   );
   const otherSteps = resolvedSteps.filter(s => !significantSteps.includes(s));
   const remaining = Math.max(0, limit - significantSteps.length);
   const trimmedSteps = [...significantSteps, ...otherSteps.slice(0, remaining)]
-    .sort((a, b) => ((a as Record<string, unknown>).index as number ?? 0) - ((b as Record<string, unknown>).index as number ?? 0));
+    .sort((a, b) => (Number(a.index) || 0) - (Number(b.index) || 0));
   const wasTruncated = totalStepCount > trimmedSteps.length;
 
   const output: Record<string, unknown> = {
@@ -119,8 +136,8 @@ async function handler({ txid, date, max_steps }: { txid: string; date?: string;
       steps: trimmedSteps,
       sqlSummary: {
         totalCount: sqlSteps.length,
-        totalElapsed: sqlSteps.reduce((sum, s) => sum + (s.elapsed ?? 0), 0),
-        slowQueries: sqlSteps.filter(s => (s.elapsed ?? 0) > 0).sort((a, b) => (b.elapsed ?? 0) - (a.elapsed ?? 0)).slice(0, 20),
+        totalElapsed: sqlSteps.reduce((sum, s) => sum + (Number(s.elapsed) || 0), 0),
+        slowQueries: sqlSteps.filter(s => (Number(s.elapsed) || 0) > 0).sort((a, b) => (Number(b.elapsed) || 0) - (Number(a.elapsed) || 0)).slice(0, 20),
       },
       apiCallSummary: {
         totalCount: apiCallSteps.length,

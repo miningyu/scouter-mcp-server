@@ -2,7 +2,7 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { client, jsonStringify, catchWarn } from "../client/index.js";
 import { todayYmd, parseTimeToMillis, minutesAgo, now, millisToYmdHms } from "../time-utils.js";
-import { resolveHashes, resolveOrHash, maskXLogPii, isMaskPiiEnabled } from "./shared-utils.js";
+import { resolveHashes, resolveOrHash, compactXLog, isMaskPiiEnabled } from "./shared-utils.js";
 
 export const params = {
   date: z.string().optional().describe("Date in YYYYMMDD format. Defaults to today."),
@@ -83,7 +83,7 @@ async function handler(args: {
     resolveHashes(serviceHashes, "service", date),
     resolveHashes(errorHashes, "error", date),
   ]);
-  const resolved = sorted.map(t => maskXLogPii({
+  const resolved = sorted.map(t => compactXLog({
     ...t,
     serviceName: resolveOrHash(Number(t.service) || 0, serviceMap),
     errorMessage: Number(t.error) ? resolveOrHash(Number(t.error), errorMap) : undefined,

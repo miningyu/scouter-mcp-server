@@ -102,8 +102,34 @@ async function handler(args: {
     };
   }
 
-  if (env !== null) output.env = maskSensitiveValues(env);
-  if (sockets !== null) output.sockets = sockets;
+  if (env !== null) {
+    const SKIP_PREFIXES = [
+      "sun.", "awt.", "socksNonProxyHosts", "ftp.nonProxyHosts", "http.nonProxyHosts",
+      "file.encoding.pkg", "sun.io.", "java.awt.", "java.endorsed.dirs", "java.ext.dirs",
+      "java.specification.", "java.vm.specification.", "java.vendor.url",
+      "package.access", "package.definition", "ignore.endorsed.dirs",
+      "tomcat.util.scan.", "org.apache.el.", "org.jboss.",
+      "org.apache.catalina.security.",
+    ];
+    const masked = maskSensitiveValues(env);
+    const filtered = Array.isArray(masked)
+      ? (masked as Array<{ name: string; value: unknown }>).filter(
+          item => !SKIP_PREFIXES.some(p => item.name.startsWith(p)))
+      : masked;
+    output.env = filtered;
+  }
+  if (sockets !== null) {
+    output.sockets = Array.isArray(sockets)
+      ? (sockets as Array<Record<string, unknown>>).map(s => {
+          const { key: _, standby: _2, stack: _3, ...rest } = s;
+          const compact: Record<string, unknown> = {};
+          for (const [k, v] of Object.entries(rest)) {
+            if (v !== "" && v !== "0" && v !== null && v !== undefined) compact[k] = v;
+          }
+          return compact;
+        })
+      : sockets;
+  }
   if (warnings.length > 0) output.warnings = warnings;
 
   return { content: [{ type: "text" as const, text: jsonStringify(output) }] };

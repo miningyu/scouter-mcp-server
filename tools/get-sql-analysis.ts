@@ -64,12 +64,18 @@ async function handler(args: {
   const totalElapsed = allSqls.reduce((sum, s) => sum + (Number(s.elapsedSum) || 0), 0);
   const totalCount = allSqls.reduce((sum, s) => sum + (Number(s.count) || 0), 0);
 
+  const trimSql = (sql: string | undefined): string => {
+    if (!sql) return "";
+    const stripped = sql.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\s+/g, " ").trim();
+    return stripped.length > 500 ? stripped.slice(0, 500) + "..." : stripped;
+  };
+
   const enriched = allSqls.map(s => {
     const count = Number(s.count) || 0;
     const errorCount = Number(s.errorCount) || 0;
     const elapsedSum = Number(s.elapsedSum) || 0;
     return {
-      sql: s.summaryKeyName,
+      sql: trimSql(s.summaryKeyName),
       count, errorCount, elapsedSum,
       avgElapsed: count > 0 ? Math.round(elapsedSum / count) : 0,
       pctOfTotalElapsed: totalElapsed > 0 ? +(elapsedSum / totalElapsed * 100).toFixed(2) : 0,

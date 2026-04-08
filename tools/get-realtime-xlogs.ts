@@ -2,7 +2,7 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { client, jsonStringify, catchWarn } from "../client/index.js";
 import { millisToIso } from "../time-utils.js";
-import { resolveHashes, resolveOrHash, maskXLogPii, isMaskPiiEnabled } from "./shared-utils.js";
+import { resolveHashes, resolveOrHash, compactXLog, isMaskPiiEnabled } from "./shared-utils.js";
 
 export const params = {
   obj_type: z.string().optional().describe("Object type filter (e.g., 'tomcat')"),
@@ -64,7 +64,7 @@ async function handler(args: {
     }
   }
 
-  const maskedXlogs = xlogs.map(x => maskXLogPii(x as Record<string, unknown>));
+  const maskedXlogs = xlogs.map(x => compactXLog(x as Record<string, unknown>));
   const sorted = maskedXlogs.sort((a, b) => (Number(b.elapsed) || 0) - (Number(a.elapsed) || 0));
   const errorCount = sorted.filter(x => x.error).length;
 
@@ -73,9 +73,9 @@ async function handler(args: {
     xlogCount: sorted.length,
     errorCount,
     nextOffsets: { xlogLoop: result.xlogLoop ?? 0, xlogIndex: result.xlogIndex ?? 0 },
-    xlogs: sorted.slice(0, 100),
+    xlogs: sorted.slice(0, 30),
   };
-  if (sorted.length > 100) output.truncatedFrom = sorted.length;
+  if (sorted.length > 30) output.truncatedFrom = sorted.length;
   if (warnings.length > 0) output.warnings = warnings;
   if (isMaskPiiEnabled()) output.piiMasked = "Fields marked [masked] contain data that is hidden by SCOUTER_MASK_PII. Disable this env var to see actual values.";
 

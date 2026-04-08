@@ -2,7 +2,7 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { client, jsonStringify, catchWarn } from "../client/index.js";
 import { todayYmd } from "../time-utils.js";
-import { resolveHashes, resolveOrHash, maskXLogPii, isMaskPiiEnabled } from "./shared-utils.js";
+import { resolveHashes, resolveOrHash, compactXLog, isMaskPiiEnabled } from "./shared-utils.js";
 
 export const params = {
   gxid: z.string().optional().describe("Global transaction ID for distributed trace lookup"),
@@ -76,7 +76,7 @@ async function handler(args: { gxid?: string; txids?: string; date?: string; inc
     resolveHashes(serviceHashes, "service", date),
     resolveHashes(errorHashes, "error", date),
   ]);
-  const resolved = transactions.map(t => maskXLogPii({
+  const resolved = transactions.map(t => compactXLog({
     ...t,
     serviceName: resolveOrHash(Number(t.service) || 0, serviceMap),
     errorMessage: Number(t.error) ? resolveOrHash(Number(t.error), errorMap) : undefined,

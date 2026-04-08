@@ -233,3 +233,18 @@ export function maskRawResult(result: unknown): unknown {
   if (result !== null && typeof result === "object") return maskXLogPii(result as Record<string, unknown>);
   return result;
 }
+
+// --------------- Token Optimization ---------------
+
+export function stripEmpty<T extends Record<string, unknown>>(entry: T): T {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(entry)) {
+    if (value === "" || value === "0" || value === null || value === undefined) continue;
+    result[key] = value;
+  }
+  return result as T;
+}
+
+export function compactXLog<T extends Record<string, unknown>>(entry: T): T {
+  return stripEmpty(maskXLogPii(entry));
+}
