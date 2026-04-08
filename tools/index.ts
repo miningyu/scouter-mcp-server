@@ -32,6 +32,10 @@ import { register as registerSearchTransactions } from "./search-transactions.js
 import { register as registerSetAlertScripting } from "./set-alert-scripting.js";
 import { register as registerSetConfigure } from "./set-configure.js";
 
+export function isWriteEnabled(): boolean {
+  return process.env.SCOUTER_ENABLE_WRITE === "true";
+}
+
 export function registerAllTools(server: McpServer): void {
   registerGetSystemOverview(server);
   registerDiagnosePerformance(server);
@@ -58,10 +62,13 @@ export function registerAllTools(server: McpServer): void {
   registerGetRawProfile(server);
   registerGetRawXlog(server);
   registerLookupText(server);
-  registerSetConfigure(server);
-  registerSetAlertScripting(server);
-  registerManageKvStore(server);
-  registerManageShortener(server);
-  registerControlThread(server);
-  registerRemoveInactiveObjects(server);
+
+  if (isWriteEnabled()) {
+    registerSetConfigure(server);
+    registerSetAlertScripting(server);
+    registerManageKvStore(server);
+    registerManageShortener(server);
+    registerControlThread(server);
+    registerRemoveInactiveObjects(server);
+  }
 }

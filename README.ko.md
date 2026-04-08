@@ -43,9 +43,12 @@ Scouter 수집 서버를 가리키도록 환경 변수를 설정합니다:
 | `SCOUTER_TCP_HOST` | TCP 직접 연결 호스트 | |
 | `SCOUTER_TCP_PORT` | TCP 직접 연결 포트 | `6100` |
 | `SCOUTER_PROTOCOL` | `http` 또는 `tcp` 강제 지정 | 자동 감지 |
+| `SCOUTER_ENABLE_WRITE` | `true`로 설정 시 쓰기 도구 활성화 | *(비활성)* |
 
-**HTTP 모드** (권장) — `SCOUTER_API_URL` 설정. 32개 도구 모두 지원.
+**HTTP 모드** (권장) — `SCOUTER_API_URL` 설정. 32개 도구 모두 지원 (쓰기 도구는 `SCOUTER_ENABLE_WRITE=true` 필요).
 **TCP 모드** — `SCOUTER_TCP_HOST` 설정. 경량, webapp 불필요. 일부 관리 도구 미지원.
+
+> **참고:** 기본적으로 읽기 전용 도구(25개)만 등록됩니다. 쓰기 도구(`set_configure`, `set_alert_scripting`, `manage_kv_store`, `manage_shortener`, `control_thread`, `remove_inactive_objects`)를 사용하려면 `SCOUTER_ENABLE_WRITE=true`를 설정하세요.
 
 ### 3. MCP 클라이언트에 추가
 

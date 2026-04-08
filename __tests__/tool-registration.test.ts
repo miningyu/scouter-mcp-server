@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeAll } from "vitest";
+import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { registerAllTools, isWriteEnabled } from "../tools/index.js";
 
 interface ToolRegistration {
   name: string;
@@ -41,6 +42,12 @@ const READ_ONLY_TOOLS = new Set([
   "get_alert_summary", "get_alert_scripting", "get_configure",
   "get_server_info", "get_host_info", "get_agent_info",
   "get_thread_dump", "get_raw_profile", "get_raw_xlog", "lookup_text",
+]);
+
+const WRITE_TOOLS = new Set([
+  "set_configure", "set_alert_scripting",
+  "manage_kv_store", "manage_shortener",
+  "control_thread", "remove_inactive_objects",
 ]);
 
 const DESTRUCTIVE_TOOLS = new Set([
@@ -159,5 +166,74 @@ describe("Tool Registry Integrity", () => {
     for (const reg of allRegistrations) {
       expect(reg.name).toMatch(/^[a-z][a-z0-9_]*$/);
     }
+  });
+});
+
+describe("Write Permission via SCOUTER_ENABLE_WRITE", () => {
+  const originalEnv = process.env.SCOUTER_ENABLE_WRITE;
+
+  afterAll(() => {
+    if (originalEnv === undefined) {
+      delete process.env.SCOUTER_ENABLE_WRITE;
+    } else {
+      process.env.SCOUTER_ENABLE_WRITE = originalEnv;
+    }
+  });
+
+  it("should not register write tools when SCOUTER_ENABLE_WRITE is unset", () => {
+    delete process.env.SCOUTER_ENABLE_WRITE;
+    const { server, registrations } = createMockServer();
+    registerAllTools(server);
+    const names = new Set(registrations.map(r => r.name));
+    for (const writeTool of WRITE_TOOLS) {
+      expect(names.has(writeTool), `${writeTool} should not be registered`).toBe(false);
+    }
+    expect(registrations).toHaveLength(25);
+  });
+
+  it("should not register write tools when SCOUTER_ENABLE_WRITE is 'false'", () => {
+    process.env.SCOUTER_ENABLE_WRITE = "false";
+    const { server, registrations } = createMockServer();
+    registerAllTools(server);
+    const names = new Set(registrations.map(r => r.name));
+    for (const writeTool of WRITE_TOOLS) {
+      expect(names.has(writeTool), `${writeTool} should not be registered`).toBe(false);
+    }
+    expect(registrations).toHaveLength(25);
+  });
+
+  it("should register all tools including write tools when SCOUTER_ENABLE_WRITE is 'true'", () => {
+    process.env.SCOUTER_ENABLE_WRITE = "true";
+    const { server, registrations } = createMockServer();
+    registerAllTools(server);
+    const names = new Set(registrations.map(r => r.name));
+    for (const writeTool of WRITE_TOOLS) {
+      expect(names.has(writeTool), `${writeTool} should be registered`).toBe(true);
+    }
+    expect(registrations).toHaveLength(31);
+  });
+
+  it("should always register all read-only tools regardless of SCOUTER_ENABLE_WRITE", () => {
+    delete process.env.SCOUTER_ENABLE_WRITE;
+    const { server, registrations } = createMockServer();
+    registerAllTools(server);
+    const names = new Set(registrations.map(r => r.name));
+    for (const readTool of READ_ONLY_TOOLS) {
+      expect(names.has(readTool), `${readTool} should be registered`).toBe(true);
+    }
+  });
+
+  it("isWriteEnabled should return false when env is unset", () => {
+    delete process.env.SCOUTER_ENABLE_WRITE;
+    expect(isWriteEnabled()).toBe(false);
+  });
+
+  it("isWriteEnabled should return true only when env is 'true'", () => {
+    process.env.SCOUTER_ENABLE_WRITE = "true";
+    expect(isWriteEnabled()).toBe(true);
+    process.env.SCOUTER_ENABLE_WRITE = "TRUE";
+    expect(isWriteEnabled()).toBe(false);
+    process.env.SCOUTER_ENABLE_WRITE = "1";
+    expect(isWriteEnabled()).toBe(false);
   });
 });

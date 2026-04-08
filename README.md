@@ -43,9 +43,12 @@ Set environment variables to point at your Scouter collector:
 | `SCOUTER_TCP_HOST` | TCP direct connection host | |
 | `SCOUTER_TCP_PORT` | TCP direct connection port | `6100` |
 | `SCOUTER_PROTOCOL` | Force `http` or `tcp` | auto-detect |
+| `SCOUTER_ENABLE_WRITE` | Set to `true` to enable write tools | *(disabled)* |
 
-**HTTP mode** (recommended) — set `SCOUTER_API_URL`. Supports all 32 tools.
+**HTTP mode** (recommended) — set `SCOUTER_API_URL`. Supports all 32 tools (write tools require `SCOUTER_ENABLE_WRITE=true`).
 **TCP mode** — set `SCOUTER_TCP_HOST`. Lightweight, no webapp needed, but some admin tools are unavailable.
+
+> **Note:** By default, only read-only tools (25) are registered. To enable write tools (`set_configure`, `set_alert_scripting`, `manage_kv_store`, `manage_shortener`, `control_thread`, `remove_inactive_objects`), set `SCOUTER_ENABLE_WRITE=true`.
 
 ### 3. Add to your MCP client
 
