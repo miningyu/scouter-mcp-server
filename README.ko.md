@@ -39,10 +39,8 @@ Scouter 수집 서버를 가리키도록 환경 변수를 설정합니다:
 | `SCOUTER_API_URL` | Scouter webapp REST API 기본 URL | `http://localhost:6180` |
 | `SCOUTER_API_ID` | API 로그인 ID | |
 | `SCOUTER_API_PASSWORD` | API 로그인 비밀번호 | |
-| `SCOUTER_API_TOKEN` | Bearer 토큰 (로그인 생략) | |
 | `SCOUTER_TCP_HOST` | TCP 직접 연결 호스트 | |
 | `SCOUTER_TCP_PORT` | TCP 직접 연결 포트 | `6100` |
-| `SCOUTER_PROTOCOL` | `http` 또는 `tcp` 강제 지정 | 자동 감지 |
 | `SCOUTER_ENABLE_WRITE` | `true`로 설정 시 쓰기 도구 활성화 | *(비활성)* |
 | `SCOUTER_MASK_PII` | `false`로 설정 시 PII 마스킹 비활성화 (IP, 로그인, UserAgent, SQL 파라미터) | `true` |
 

@@ -10,10 +10,9 @@ export class HttpClient implements ScouterClient {
     private readonly apiPrefix: string,
     private readonly apiId: string,
     private readonly apiPassword: string,
-    initialToken: string,
     private readonly serverId: number = 0,
   ) {
-    this.bearerToken = initialToken;
+    this.bearerToken = "";
   }
 
   private async login(): Promise<string> {

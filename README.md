@@ -39,10 +39,8 @@ Set environment variables to point at your Scouter collector:
 | `SCOUTER_API_URL` | Scouter webapp REST API base URL | `http://localhost:6180` |
 | `SCOUTER_API_ID` | API login ID | |
 | `SCOUTER_API_PASSWORD` | API login password | |
-| `SCOUTER_API_TOKEN` | Bearer token (skip login) | |
 | `SCOUTER_TCP_HOST` | TCP direct connection host | |
 | `SCOUTER_TCP_PORT` | TCP direct connection port | `6100` |
-| `SCOUTER_PROTOCOL` | Force `http` or `tcp` | auto-detect |
 | `SCOUTER_ENABLE_WRITE` | Set to `true` to enable write tools | *(disabled)* |
 | `SCOUTER_MASK_PII` | Set to `false` to disable PII masking in responses (IP, login, userAgent, SQL params) | `true` |
 

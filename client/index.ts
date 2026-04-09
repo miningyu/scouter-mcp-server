@@ -9,8 +9,6 @@ export { UnsupportedOperationError };
 const MAX_RESPONSE_CHARS = 80_000;
 
 function detectProtocol(): "tcp" | "http" {
-  const explicit = process.env.SCOUTER_PROTOCOL;
-  if (explicit === "tcp" || explicit === "http") return explicit;
   if (process.env.SCOUTER_TCP_HOST) return "tcp";
   if (process.env.SCOUTER_API_URL) return "http";
   return "http";
@@ -28,8 +26,7 @@ function createClient(): ScouterClient {
   }
 
   const apiUrl = process.env.SCOUTER_API_URL || "http://localhost:6180";
-  const apiToken = process.env.SCOUTER_API_TOKEN || "";
-  return new HttpClient(`${apiUrl}/scouter/v1`, apiId, apiPassword, apiToken);
+  return new HttpClient(`${apiUrl}/scouter/v1`, apiId, apiPassword);
 }
 
 export const client: ScouterClient = createClient();
