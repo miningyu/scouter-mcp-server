@@ -9,6 +9,12 @@ export default defineConfig({
       provider: "v8",
       include: ["**/*.ts"],
       exclude: ["**/__tests__/**", "**/dist/**"],
+      thresholds: {
+        statements: 80,
+        branches: 80,
+        functions: 80,
+        lines: 80,
+      },
     },
   },
 });
