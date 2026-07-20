@@ -1,5 +1,7 @@
 # Scouter MCP Server
 
+[![npm provenance](https://img.shields.io/badge/npm-provenance-brightgreen?logo=npm)](https://www.npmjs.com/package/scouter-mcp-server)
+
 [English](./README.md)
 
 [Scouter APM](https://github.com/scouter-project/scouter)을 AI 에이전트와 연결하는 MCP (Model Context Protocol) 서버입니다. 자연어로 실시간 애플리케이션 성능 데이터를 조회하고 분석할 수 있습니다.

@@ -1,5 +1,7 @@
 # Scouter MCP Server
 
+[![npm provenance](https://img.shields.io/badge/npm-provenance-brightgreen?logo=npm)](https://www.npmjs.com/package/scouter-mcp-server)
+
 [한국어](./README.ko.md)
 
 An MCP (Model Context Protocol) server that connects AI agents to [Scouter APM](https://github.com/scouter-project/scouter), enabling natural-language queries against real-time application performance data.
