@@ -7,8 +7,10 @@ export class DataOutputX {
   private chunks: Buffer[] = [];
 
   writeByte(v: number): void {
+    // Write the low 8 bits like Java's DataOutputX.writeByte, so unsigned
+    // values 128-255 (blob length prefixes) encode instead of throwing.
     const buf = Buffer.alloc(1);
-    buf.writeInt8(v);
+    buf[0] = v & 0xff;
     this.chunks.push(buf);
   }
 
@@ -17,8 +19,10 @@ export class DataOutputX {
   }
 
   writeShort(v: number): void {
+    // Low 16 bits, same reason as writeByte: blob lengths 32768-65535
+    // are written unsigned and must not throw.
     const buf = Buffer.alloc(2);
-    buf.writeInt16BE(v);
+    buf.writeUInt16BE(v & 0xffff);
     this.chunks.push(buf);
   }
 
