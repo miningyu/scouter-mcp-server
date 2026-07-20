@@ -123,6 +123,49 @@ describe("DataOutputX / DataInputX roundtrip", () => {
     expect(din.readBlob()).toEqual(Buffer.alloc(0));
   });
 
+  it("should roundtrip blobs across every length-encoding tier", () => {
+    // 1-byte length: 128-253 (previously threw RangeError in writeByte)
+    // 255 + short: 254-65535 (previously threw in writeByte, then writeShort)
+    // 254 + int: 65536+
+    for (const len of [128, 253, 254, 300, 32768, 65535, 65536, 70000]) {
+      const data = Buffer.alloc(len, 0xab);
+      const dout = new DataOutputX();
+      dout.writeBlob(data);
+      const din = new DataInputX(dout.toBuffer());
+      const back = din.readBlob();
+      expect(back.length).toBe(len);
+      expect(back.equals(data)).toBe(true);
+    }
+  });
+
+  it("should roundtrip text longer than 127 bytes", () => {
+    const ascii = "A".repeat(200);
+    const korean = "가".repeat(100); // 300 bytes in UTF-8
+    const dout = new DataOutputX();
+    dout.writeText(ascii);
+    dout.writeText(korean);
+    const din = new DataInputX(dout.toBuffer());
+    expect(din.readText()).toBe(ascii);
+    expect(din.readText()).toBe(korean);
+  });
+
+  it("should keep negative byte and short roundtrips intact", () => {
+    const dout = new DataOutputX();
+    dout.writeByte(-1);
+    dout.writeByte(-128);
+    dout.writeByte(127);
+    dout.writeShort(-1);
+    dout.writeShort(-32768);
+    dout.writeShort(32767);
+    const din = new DataInputX(dout.toBuffer());
+    expect(din.readByte()).toBe(-1);
+    expect(din.readByte()).toBe(-128);
+    expect(din.readByte()).toBe(127);
+    expect(din.readShort()).toBe(-1);
+    expect(din.readShort()).toBe(-32768);
+    expect(din.readShort()).toBe(32767);
+  });
+
   it("should read large blob with 255 prefix", () => {
     // Manually construct a blob with 255 prefix (unsigned byte)
     // since writeByte uses signed int8 and can't write 255 directly
