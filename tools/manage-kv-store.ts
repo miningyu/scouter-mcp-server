@@ -14,7 +14,7 @@ export const params = {
   value: z.string().optional().describe("Value to set (required for 'set')"),
   ttl: z.number().optional().default(0).describe("Time-to-live in seconds. 0 = permanent (default)"),
   keys: z.string().optional().describe("Comma-separated keys for 'get_bulk' operation"),
-  kvs: z.record(z.string()).optional().describe("Key-value pairs object for 'set_bulk' operation (e.g., {\"key1\": \"val1\", \"key2\": \"val2\"})"),
+  kvs: z.record(z.string(), z.string()).optional().describe("Key-value pairs object for 'set_bulk' operation (e.g., {\"key1\": \"val1\", \"key2\": \"val2\"})"),
 };
 
 export function register(server: McpServer) {
