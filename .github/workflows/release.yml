@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # npm trusted publishing (OIDC)
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          cache: npm
+
+      # Trusted publishing needs npm >= 11.5.1
+      - run: npm install -g npm@latest
+
+      - name: Check tag matches package.json version
+        run: |
+          PKG=$(node -p "require('./package.json').version")
+          TAG="${TAG_NAME#v}"
+          if [ "$PKG" != "$TAG" ]; then
+            echo "package.json version ($PKG) != release tag ($TAG_NAME)"
+            exit 1
+          fi
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
+
+      - run: npm ci
+
+      - run: npm run test:coverage
+
+      - run: npm publish
