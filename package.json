@@ -20,7 +20,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/node": "^22.15.2",
+    "@types/node": "^26.1.1",
     "@vitest/coverage-v8": "^4.1.10",
     "shx": "^0.4.0",
     "typescript": "^5.8.3",
