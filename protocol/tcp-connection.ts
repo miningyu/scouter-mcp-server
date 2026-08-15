@@ -51,7 +51,7 @@ export class ScouterTcpConnection {
     });
 
     socket.setTimeout(SO_TIMEOUT);
-    socket.on("data", (chunk) => this.onData(chunk));
+    socket.on("data", (chunk: Buffer) => this.onData(chunk));
     socket.on("close", () => this.onClose());
     socket.on("error", () => this.onClose());
     socket.on("timeout", () => this.onClose());
