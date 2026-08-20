@@ -7,6 +7,7 @@ import {
   OperationPermissionError,
 } from "../operations/definition.js";
 import { CliUsageError } from "./args.js";
+import { diagnoseCommand, overviewCommand, transactionsCommand } from "./commands/shortcuts.js";
 import { toolsCommand } from "./commands/tools.js";
 import { defaultDependencies, type CliDependencies } from "./deps.js";
 import { doctorCommand } from "./doctor.js";
@@ -21,12 +22,20 @@ const HELP = `scouter-mcp-server — Scouter APM access for MCP clients, humans 
   scouter-mcp-server tools describe <name>        show an operation's input schema
   scouter-mcp-server tools run <name> --input '<json>' [--yes] [--output <file>]
 
+Shortcuts (same operations, fewer keystrokes)
+  scouter-mcp-server overview [--obj-type <type>] [--json]
+  scouter-mcp-server diagnose [--since 30m] [--obj-type <type>] [--json]
+  scouter-mcp-server transactions search [--since 10m] [--limit 20] [--service <name>] [--json]
+  scouter-mcp-server transactions get <txid> [--date YYYYMMDD] [--json]
+
 Options
   --json            print machine-readable JSON
   --input <json>    operation input, validated against its schema
   --output <file>   write the result to a file; stdout gets the path and a summary
   --yes             confirm a destructive operation
   --all             include operations this environment cannot run (tools list)
+  --since <30m>     relative time window: s, m, h or d
+  --limit <n>       maximum transactions to return
 
 Environment
   SCOUTER_API_URL, SCOUTER_API_ID, SCOUTER_API_PASSWORD   HTTP mode
@@ -56,6 +65,9 @@ async function dispatch(argv: string[], io: CliIo, deps: CliDependencies): Promi
   switch (command) {
     case "doctor": return doctorCommand(rest, io, deps);
     case "tools": return toolsCommand(rest, io, deps);
+    case "overview": return overviewCommand(rest, io, deps);
+    case "diagnose": return diagnoseCommand(rest, io, deps);
+    case "transactions": return transactionsCommand(rest, io, deps);
     default:
       throw new CliUsageError(`Unknown command '${command}'. Run 'scouter-mcp-server --help'.`);
   }
