@@ -15,6 +15,9 @@ export class HttpClient implements ScouterClient {
     this.bearerToken = "";
   }
 
+  /** HTTP is stateless — nothing to release. */
+  async close(): Promise<void> {}
+
   private async login(): Promise<string> {
     const url = `${this.apiPrefix}/user/loginGetToken`;
     const controller = new AbortController();
