@@ -14,7 +14,9 @@ export interface ConnectionInfo {
   protocol: ScouterProtocol;
   /** Endpoint with any credentials stripped — safe to print. */
   endpoint: string;
-  /** Whether SCOUTER_API_ID is set. The password itself is never exposed. */
+  /** Whether an endpoint env var was set, as opposed to falling back to the default. */
+  endpointConfigured: boolean;
+  /** Whether SCOUTER_API_PASSWORD is set. The password itself is never exposed. */
   authConfigured: boolean;
   apiId: string;
   writeEnabled: boolean;
@@ -70,6 +72,7 @@ export function describeConnection(): ConnectionInfo {
   return {
     protocol,
     endpoint,
+    endpointConfigured: Boolean(protocol === "tcp" ? process.env.SCOUTER_TCP_HOST : process.env.SCOUTER_API_URL),
     authConfigured: Boolean(process.env.SCOUTER_API_PASSWORD),
     apiId,
     writeEnabled: process.env.SCOUTER_ENABLE_WRITE === "true",
