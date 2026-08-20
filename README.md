@@ -4,13 +4,24 @@
 
 [한국어](./README.ko.md)
 
-An MCP (Model Context Protocol) server that connects AI agents to [Scouter APM](https://github.com/scouter-project/scouter), enabling natural-language queries against real-time application performance data.
+Connects AI agents and people to [Scouter APM](https://github.com/scouter-project/scouter), enabling natural-language and command-line queries against real-time application performance data.
 
 Ask your AI assistant things like *"What's the slowest SQL in the last hour?"* or *"Why is TPS dropping?"* and get answers grounded in live monitoring data.
 
+The same package offers three ways in, all backed by one shared set of operations:
+
+```
+MCP-capable AI  ──▶ MCP  ─┐
+                          ├──▶ operation registry ──▶ ScouterClient ──▶ Scouter
+Human           ──▶ CLI  ─┤
+Skill-capable AI──▶ CLI  ─┘
+```
+
 ## Features
 
-- **32 tools** covering the full Scouter API surface
+- **31 operations** covering the full Scouter API surface, exposed as both MCP tools and CLI commands
+- **Built-in CLI** — `doctor`, `tools list/describe/run`, plus `overview`, `diagnose` and `transactions` shortcuts
+- **Companion skill** — a ready-made skill so a skill-capable agent can investigate without MCP
 - **Dual protocol** — connects via HTTP (REST API) or TCP (binary protocol)
 - **Automatic hash resolution** — SQL queries, service names, and error messages are decoded from Scouter's internal hash IDs to human-readable text
 - **Executable SQL** — transaction profiles include SQL with bind parameters substituted, ready for `EXPLAIN ANALYZE`
@@ -21,7 +32,11 @@ Ask your AI assistant things like *"What's the slowest SQL in the last hour?"* o
 ### Using npx (no install needed)
 
 ```bash
-npx scouter-mcp-server
+# no arguments: start the stdio MCP server
+npx -y scouter-mcp-server
+
+# any argument: use the CLI
+npx -y scouter-mcp-server doctor
 ```
 
 ### Or install from source
@@ -46,7 +61,7 @@ Set environment variables to point at your Scouter collector:
 | `SCOUTER_ENABLE_WRITE` | Set to `true` to enable write tools | *(disabled)* |
 | `SCOUTER_MASK_PII` | Set to `false` to disable PII masking in responses (IP, login, userAgent, SQL params) | `true` |
 
-**HTTP mode** (recommended) — set `SCOUTER_API_URL`. Supports all 32 tools (write tools require `SCOUTER_ENABLE_WRITE=true`).
+**HTTP mode** (recommended) — set `SCOUTER_API_URL`. Supports all 31 tools (write tools require `SCOUTER_ENABLE_WRITE=true`).
 **TCP mode** — set `SCOUTER_TCP_HOST`. Lightweight, no webapp needed, but some admin tools are unavailable.
 
 > **Note:** By default, only read-only tools (25) are registered. To enable write tools (`set_configure`, `set_alert_scripting`, `manage_kv_store`, `manage_shortener`, `control_thread`, `remove_inactive_objects`), set `SCOUTER_ENABLE_WRITE=true`.
@@ -123,6 +138,116 @@ claude mcp add scouter -s user \
   -- npx -y scouter-mcp-server
 ```
 
+## Command line
+
+The binary is both an MCP server and a CLI. With no arguments it starts the stdio MCP
+server exactly as before; with any argument it runs a CLI command.
+
+Results go to **stdout**, logs and error explanations go to **stderr**.
+
+### Check the connection first
+
+```bash
+npx -y scouter-mcp-server doctor
+npx -y scouter-mcp-server doctor --json
+```
+
+`doctor` reports the selected protocol, the endpoint with credentials redacted, whether
+`SCOUTER_API_ID` / `SCOUTER_API_PASSWORD` are set, and whether Scouter actually answers.
+It exits 0 when every check passes and non-zero otherwise. It never prints a password.
+
+### Discover and run any operation
+
+```bash
+npx -y scouter-mcp-server tools list --json
+npx -y scouter-mcp-server tools describe get_system_overview --json
+npx -y scouter-mcp-server tools run search_transactions --input '{"max_count":20}'
+```
+
+`tools list` shows only what this environment may run — write operations stay hidden
+unless `SCOUTER_ENABLE_WRITE=true` (`--all` lists them anyway, marked unrunnable).
+`tools run` validates `--input` against the operation's own Zod schema before calling
+Scouter, so a typo fails locally with a readable message.
+
+### Shortcuts for the common path
+
+```bash
+npx -y scouter-mcp-server overview --json
+npx -y scouter-mcp-server diagnose --since 30m --json
+npx -y scouter-mcp-server transactions search --since 10m --limit 20 --json
+npx -y scouter-mcp-server transactions get <txid> --json
+```
+
+`--since` accepts a number plus `s`, `m`, `h` or `d`. Without `--json` each shortcut prints
+a short human summary; with `--json` it prints the untouched operation result.
+
+### Large results
+
+```bash
+npx -y scouter-mcp-server transactions get <txid> --output ./tx.json
+```
+
+With `--output`, the full JSON goes to the file and stdout carries only the path, the byte
+count and a summary — useful when a profile would otherwise flood a terminal or an agent's
+context.
+
+### Options and exit codes
+
+| Option | Meaning |
+|---|---|
+| `--json` | Print the machine-readable result instead of a summary |
+| `--input <json>` | Operation input, validated against the schema |
+| `--output <file>` | Write the result to a file; stdout gets only the path and a summary |
+| `--yes` | Confirm a destructive operation |
+| `--all` | Include operations this environment cannot run (`tools list`) |
+| `--since <dur>` | Relative time window (`45s`, `30m`, `2h`, `1d`) |
+| `--limit <n>` | Maximum transactions to return |
+
+| Exit code | Meaning |
+|---|---|
+| `0` | Success |
+| `1` | Could not reach or query Scouter |
+| `2` | Bad command line, or input that failed schema validation |
+| `3` | Operation not permitted in this environment |
+
+### Write safety
+
+Write permission is enforced in the shared execution step, not only at MCP registration,
+so the CLI cannot be used to get around it:
+
+- A write operation is refused unless `SCOUTER_ENABLE_WRITE=true` (exit 3).
+- A destructive operation (`control_thread`, `remove_inactive_objects`) additionally needs
+  `--yes` (exit 3 without it).
+
+```bash
+SCOUTER_ENABLE_WRITE=true npx -y scouter-mcp-server \
+  tools run control_thread --yes --input '{"obj_hash":123,"thread_id":45,"action":"interrupt"}'
+```
+
+## Companion skill
+
+`skills/scouter/` is a skill for agents that run shell commands instead of speaking MCP. It
+tells the agent when to reach for Scouter, to run `doctor` first, how to work from overview
+to a single transaction, to keep results small, and to ask before anything that writes.
+
+Install it by copying the directory into the agent's skills folder:
+
+```bash
+# from a clone
+cp -r skills/scouter ~/.claude/skills/
+
+# or from an npm install
+cp -r "$(npm root -g)/scouter-mcp-server/skills/scouter" ~/.claude/skills/
+```
+
+Then ask in plain language:
+
+> The checkout API got slow around 14:00. Can you look into it?
+
+The agent runs `doctor`, then `diagnose`, then drills into the slowest transactions. It never
+runs a write or destructive command without asking first, and when configuration is missing it
+names the environment variable rather than revealing any value.
+
 ## Tools
 
 ### Performance Investigation
@@ -194,19 +319,22 @@ claude mcp add scouter -s user \
 ## Architecture
 
 ```
-┌─────────────────────────────┐
-│  AI Agent (Claude, etc.)    │
-│  "Why is the app slow?"     │
-└──────────┬──────────────────┘
-           │ MCP (stdio)
-┌──────────▼──────────────────┐
-│  Scouter MCP Server         │
-│  ┌────────────────────────┐ │
-│  │ Tool Hub (31 tools)    │ │
-│  │ Hash Resolution Engine │ │
-│  │ SQL Param Binding      │ │
-│  └────────────────────────┘ │
-└──────────┬──────────────────┘
+┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+│ MCP-capable AI   │  │ Human at a shell │  │ Skill-capable AI │
+└────────┬─────────┘  └────────┬─────────┘  └────────┬─────────┘
+         │ MCP (stdio)         │ CLI                 │ CLI
+┌────────▼─────────────────────▼─────────────────────▼─────────┐
+│  scouter-mcp-server                                          │
+│  ┌────────────────────┐   ┌───────────────────────────────┐  │
+│  │ MCP tool adapter   │   │ CLI commands                  │  │
+│  └─────────┬──────────┘   └───────────────┬───────────────┘  │
+│            └───────────────┬──────────────┘                  │
+│  ┌─────────────────────────▼─────────────────────────────┐   │
+│  │ Operation registry (31 operations)                    │   │
+│  │ Write / destructive guards · Hash resolution engine   │   │
+│  │ SQL param binding                                     │   │
+│  └───────────────────────────────────────────────────────┘   │
+└──────────┬───────────────────────────────────────────────────┘
            │ HTTP REST or TCP Binary
 ┌──────────▼──────────────────┐
 │  Scouter Collector Server   │
@@ -223,15 +351,32 @@ claude mcp add scouter -s user \
 
 ```
 scouter.mcp/
-├── index.ts                 # Entry point — stdio transport + SIGINT handler
+├── index.ts                 # Entry point — no arguments starts MCP, arguments run the CLI
+├── operations/              # Transport-neutral core, shared by MCP and CLI
+│   ├── definition.ts        # OperationContext, OperationDefinition, error types
+│   ├── context.ts           # Client injection + object-type discovery cache
+│   ├── execute.ts           # The one execution path: permissions, confirmation, validation
+│   ├── registry.ts          # The single list of all 31 operations
+│   ├── shared-utils.ts      # Hash resolution, SQL param binding, PII masking
+│   └── ... (31 operation files)
+├── cli/
+│   ├── index.ts             # runCli() — command dispatch, error → exit code mapping
+│   ├── args.ts              # Minimal dependency-free argv parser
+│   ├── output.ts            # stdout/stderr split, --output file writing, exit codes
+│   ├── doctor.ts            # Configuration and connectivity checks
+│   ├── schema-info.ts       # Zod introspection for `tools describe`
+│   └── commands/            # tools list/describe/run + overview/diagnose/transactions
 ├── server/
-│   └── index.ts             # createServer() factory → { server, cleanup }
+│   ├── index.ts             # createServer() factory → { server, cleanup }
+│   ├── stdio.ts             # startStdioServer() — stdio transport + SIGINT handler
+│   └── mcp-tool.ts          # Renders an operation result as MCP tool content
 ├── tools/
-│   ├── index.ts             # registerAllTools() hub — explicit imports of all tools
-│   ├── shared-utils.ts      # Hash resolution, SQL param binding
-│   └── ... (31 tool files)
+│   ├── index.ts             # registerAllTools() — registers straight from the registry
+│   ├── shared-utils.ts      # MCP-side response builder, re-exports operations/shared-utils
+│   └── ... (31 thin MCP adapters)
+├── skills/scouter/          # Companion skill (SKILL.md + references/)
 ├── client/
-│   ├── index.ts             # Client facade — exports client, jsonStringify, catchWarn
+│   ├── index.ts             # Client facade — client, createClient, closeClient, describeConnection
 │   ├── interface.ts         # ScouterClient interface + types
 │   ├── http.ts              # HTTP/REST implementation
 │   └── tcp.ts               # TCP binary protocol implementation
@@ -258,18 +403,24 @@ npm run test:coverage  # Coverage report
 npm run build        # Production build
 ```
 
-### Adding a New Tool
+### Adding a New Operation
 
-1. Create `tools/my-tool.ts` exporting `register(server: McpServer)` with `server.registerTool()`
-2. Add `import { register as registerMyTool } from "./my-tool.js"` to `tools/index.ts`
-3. Call `registerMyTool(server)` inside `registerAllTools()`
-4. Use `shared-utils.ts` for hash resolution and SQL binding
+An operation is written once and shows up in both MCP and the CLI.
+
+1. Create `operations/my-operation.ts` exporting `operation = defineOperation({ name, title,
+   description, inputShape, annotations, execute })`. `execute(ctx, input)` returns a plain
+   object — never MCP content and never a CLI string.
+2. Add it to `operations/registry.ts`.
+3. Create `tools/my-operation.ts`, the four-line MCP adapter, so the tool keeps its
+   `register` / `params` exports.
+4. Use `operations/shared-utils.ts` for hash resolution, SQL binding and PII masking, and
+   reach Scouter through `ctx.client` rather than importing a client directly.
 
 ## Protocol Details
 
 ### HTTP Mode
 
-Connects to Scouter's webapp REST API (`/scouter/v1/*`). Supports all 32 tools including write operations (configuration, alert scripting, thread control).
+Connects to Scouter's webapp REST API (`/scouter/v1/*`). Supports all 31 tools including write operations (configuration, alert scripting, thread control).
 
 Authentication: username/password login with bearer token auto-refresh on 401.
 
