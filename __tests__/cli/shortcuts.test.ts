@@ -55,6 +55,13 @@ describe("diagnose", () => {
     expect(await runCli(["diagnose", "--since", "soon"], io, stubDeps())).toBe(EXIT_USAGE);
     expect(io.stderrText()).toContain("Invalid duration");
   });
+
+  it("warns when --since exceeds the operation's 60-minute cap", async () => {
+    const io = captureIo();
+    await runCli(["diagnose", "--since", "6h", "--json"], io, stubDeps());
+    expect(io.stderrText()).toContain("at most 60 minutes");
+    expect(JSON.parse(io.stdoutText()).timeRangeMinutes).toBe(60);
+  });
 });
 
 describe("transactions search", () => {
@@ -79,6 +86,23 @@ describe("transactions search", () => {
     const io = captureIo();
     await runCli(["transactions", "search", "--service", "/api/users", "--json"], io, stubDeps({ client }));
     expect(searchXLogData.mock.calls[0][1].service).toBe("/api/users");
+  });
+
+  it("defaults --limit to 20, matching the skill's guidance", async () => {
+    const getXLogData = vi.fn().mockResolvedValue(
+      Array.from({ length: 30 }, (_, i) => ({ txid: `t${i}`, elapsed: i, service: 0, error: 0 })),
+    );
+    const io = captureIo();
+    await runCli(["transactions", "search", "--json"], io, stubDeps({ client: createMockClient({ getXLogData } as never) }));
+    expect(JSON.parse(io.stdoutText()).returned).toBe(20);
+  });
+
+  it("surfaces operation warnings on stderr instead of hiding them behind a clean summary", async () => {
+    const getXLogData = vi.fn().mockRejectedValue(new Error("HTTP 500"));
+    const io = captureIo();
+    const code = await runCli(["transactions", "search"], io, stubDeps({ client: createMockClient({ getXLogData } as never) }));
+    expect(code).toBe(EXIT_OK);
+    expect(io.stderrText()).toContain("HTTP 500");
   });
 
   it("prints the slowest transactions by default", async () => {

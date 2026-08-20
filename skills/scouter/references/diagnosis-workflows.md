@@ -36,13 +36,14 @@ question, and send anything large to `--output`.
 
 5. **Confirm the pattern across requests.**
    ```bash
-   scouter-mcp-server tools run get_sql_analysis --input '{"time_range_minutes":30}'
+   scouter-mcp-server tools run get_sql_analysis --input '{}'
    ```
+   Narrow with `start_time` / `end_time` (epoch ms or HHmmss) when the default window is too wide.
    A single slow trace can be noise; the SQL summary shows whether it is systematic.
 
 ## "Errors spiked"
 
-1. `scouter-mcp-server tools run get_error_summary --input '{"time_range_minutes":30}'`
+1. `scouter-mcp-server tools run get_error_summary --input '{}'`
    groups errors by message with counts and rates.
 2. `scouter-mcp-server transactions search --since 30m --limit 20 --json`, then look for
    entries carrying `errorMessage`.
@@ -74,7 +75,7 @@ question, and send anything large to `--output`.
 
 ## "What alerts fired?"
 
-1. `scouter-mcp-server tools run get_alert_summary --input '{"time_range_minutes":60}'`
+1. `scouter-mcp-server tools run get_alert_summary --input '{}'`
 2. `overview --json` also carries `recentAlerts` for the live picture.
 3. `get_alert_scripting` shows the rule behind a counter's alert, which explains why it fired.
 

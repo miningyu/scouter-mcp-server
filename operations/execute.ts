@@ -32,7 +32,8 @@ function formatIssues(error: z.ZodError): string {
 }
 
 export function parseOperationInput(operation: AnyOperation, raw: unknown): Record<string, unknown> {
-  const parsed = z.object(operation.inputShape).safeParse(raw ?? {});
+  // strict: a mistyped key must fail loudly instead of silently widening the query
+  const parsed = z.strictObject(operation.inputShape).safeParse(raw ?? {});
   if (!parsed.success) {
     throw new OperationInputError(
       `Invalid input for '${operation.name}':\n${formatIssues(parsed.error)}`,

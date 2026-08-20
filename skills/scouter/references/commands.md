@@ -51,6 +51,10 @@ summary; with `--json` or `--output` they print the full operation result.
 
 `--since` takes a number plus `s`, `m`, `h` or `d` — for example `45s`, `30m`, `2h`, `1d`.
 
+Two limits to know: `diagnose` analyzes at most 60 minutes (a larger `--since` is clamped with
+a warning), and a `--since` window crossing local midnight only covers today's partition — pass
+an explicit earlier `date` to `tools run search_transactions` to query yesterday.
+
 ## Options
 
 | Option | Meaning |

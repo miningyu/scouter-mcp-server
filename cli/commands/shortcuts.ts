@@ -37,7 +37,12 @@ async function runShortcut(
   const collectingIo: CliIo = { stdout: text => collected.push(text), stderr: io.stderr };
   const code = await executeOperation(operation, input, args, collectingIo, deps);
   if (code !== EXIT_OK) return code;
-  io.stdout(summarize(JSON.parse(collected.join("\n"))));
+  const result = JSON.parse(collected.join("\n"));
+  // partial failures land in warnings — a summary must not present them as clean zeros
+  if (Array.isArray(result?.warnings)) {
+    for (const warning of result.warnings) io.stderr(`warning: ${warning}`);
+  }
+  io.stdout(summarize(result));
   return EXIT_OK;
 }
 
@@ -62,8 +67,12 @@ export function overviewCommand(argv: string[], io: CliIo, deps: CliDependencies
 export function diagnoseCommand(argv: string[], io: CliIo, deps: CliDependencies): Promise<number> {
   const args = parseArgs(argv, { ...COMMON_OPTIONS, since: "string", "obj-type": "string" });
   const objType = stringOption(args, "obj-type");
+  const minutes = durationMinutes(stringOption(args, "since"), "10m");
+  if (minutes > 60) {
+    io.stderr(`warning: diagnose analyzes at most 60 minutes; --since was clamped from ${minutes}m to 60m`);
+  }
   const input: Record<string, unknown> = {
-    time_range_minutes: durationMinutes(stringOption(args, "since"), "10m"),
+    time_range_minutes: Math.min(minutes, 60),
   };
   if (objType) input.obj_type = objType;
 
@@ -96,7 +105,7 @@ function transactionsSearch(argv: string[], io: CliIo, deps: CliDependencies): P
 
   const input: Record<string, unknown> = {
     ...toOperationTimeInput(windowFromSince(stringOption(args, "since"), "10m")),
-    max_count: parseLimit(stringOption(args, "limit"), 50),
+    max_count: parseLimit(stringOption(args, "limit"), 20),
   };
   for (const [option, field] of [["service", "service"], ["ip", "ip"], ["login", "login"], ["obj-hashes", "obj_hashes"]] as const) {
     const value = stringOption(args, option);
@@ -131,7 +140,7 @@ function transactionsGet(argv: string[], io: CliIo, deps: CliDependencies): Prom
   const date = stringOption(args, "date");
   if (date) input.date = date;
   const maxSteps = stringOption(args, "max-steps");
-  if (maxSteps) input.max_steps = parseLimit(maxSteps, 80);
+  if (maxSteps) input.max_steps = parseLimit(maxSteps, 80, "--max-steps");
 
   return runShortcut("get_transaction_detail", input, args, io, deps, result => {
     const tx = result.transaction ?? {};

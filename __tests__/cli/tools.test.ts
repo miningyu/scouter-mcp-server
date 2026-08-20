@@ -53,6 +53,13 @@ describe("tools list", () => {
     expect(payload.operations.find((o: { name: string }) => o.name === "control_thread").runnable).toBe(false);
   });
 
+  it("does not overstate runnable operations with --all", async () => {
+    const io = captureIo();
+    await runCli(["tools", "list", "--all"], io, stubDeps());
+    expect(io.stdoutText()).toContain("31 operation(s), 25 runnable in this environment");
+    expect(io.stdoutText()).not.toContain("hidden");
+  });
+
   it("prints a readable table without --json", async () => {
     const io = captureIo();
     await runCli(["tools", "list"], io, stubDeps());

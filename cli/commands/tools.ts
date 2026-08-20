@@ -43,9 +43,12 @@ export async function listCommand(argv: string[], io: CliIo): Promise<number> {
   }
 
   const width = Math.max(...available.map(o => o.name.length));
+  const runnableCount = available.filter(o => o.annotations.readOnlyHint || writeEnabled).length;
   const lines = [
-    `${available.length} operation(s) runnable in this environment`,
-    ...(writeEnabled ? [] : ["(write operations hidden — set SCOUTER_ENABLE_WRITE=true to include them)"]),
+    flag(args, "all")
+      ? `${available.length} operation(s), ${runnableCount} runnable in this environment`
+      : `${available.length} operation(s) runnable in this environment`,
+    ...(writeEnabled || flag(args, "all") ? [] : ["(write operations hidden — set SCOUTER_ENABLE_WRITE=true to include them)"]),
     "",
     ...available.map(o => `  ${o.name.padEnd(width)}  ${o.title}${o.annotations.destructiveHint ? "  [destructive]" : ""}`),
   ];

@@ -24,9 +24,9 @@ const HELP = `scouter-mcp-server — Scouter APM access for MCP clients, humans 
 
 Shortcuts (same operations, fewer keystrokes)
   scouter-mcp-server overview [--obj-type <type>] [--json]
-  scouter-mcp-server diagnose [--since 30m] [--obj-type <type>] [--json]
+  scouter-mcp-server diagnose [--since 10m] [--obj-type <type>] [--json]      (max 60m)
   scouter-mcp-server transactions search [--since 10m] [--limit 20] [--service <name>] [--json]
-  scouter-mcp-server transactions get <txid> [--date YYYYMMDD] [--json]
+  scouter-mcp-server transactions get <txid> [--date YYYYMMDD] [--max-steps 80] [--json]
 
 Options
   --json            print machine-readable JSON
@@ -78,7 +78,7 @@ export async function runCli(
   io: CliIo = processIo,
   deps: CliDependencies = defaultDependencies,
 ): Promise<number> {
-  if (argv.length === 0 || argv[0] === "--help" || argv[0] === "-h" || argv[0] === "help") {
+  if (argv.length === 0 || argv[0] === "help" || argv.includes("--help") || argv.includes("-h")) {
     io.stdout(HELP);
     return EXIT_OK;
   }

@@ -54,6 +54,11 @@ describe("input validation", () => {
   it("treats missing input as an empty object", () => {
     expect(parseOperationInput(overview, undefined)).toEqual({});
   });
+
+  it("rejects an unknown input key instead of silently stripping it", () => {
+    expect(() => parseOperationInput(search, { max_cuont: 5 }))
+      .toThrow(OperationInputError);
+  });
 });
 
 describe("write permission", () => {

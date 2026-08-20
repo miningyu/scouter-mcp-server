@@ -38,9 +38,16 @@ describe("windowFromSince", () => {
     expect(window.endMillis - window.startMillis).toBe(600_000);
   });
 
-  it("dates the window by its start", () => {
+  it("dates the window by its end, matching the operations' own default", () => {
     const window = windowFromSince("1h", "10m");
-    expect(window.date).toBe(millisToYmd(window.startMillis));
+    expect(window.date).toBe(millisToYmd(window.endMillis));
+  });
+
+  it("keeps today's partition when the window crosses midnight", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-04T00:30:00"));
+    const window = windowFromSince("2h", "10m");
+    expect(window.date).toBe("20260304");
   });
 
   it("produces operation input the time parser understands", () => {
@@ -76,5 +83,9 @@ describe("parseLimit", () => {
 
   it.each(["0", "-1", "abc", "1.5"])("rejects %s", value => {
     expect(() => parseLimit(value, 50)).toThrow(CliUsageError);
+  });
+
+  it("names the caller's option in its error", () => {
+    expect(() => parseLimit("0", 80, "--max-steps")).toThrow(/--max-steps/);
   });
 });

@@ -14,7 +14,12 @@ export function parseDuration(value: string): number {
 }
 
 export interface TimeWindow {
-  /** YYYYMMDD of the window start, which is how Scouter partitions its data. */
+  /**
+   * YYYYMMDD of the window end (today for a relative --since), matching the
+   * operations' own default. Scouter partitions by day, so a window crossing
+   * midnight loses the slice before 00:00 of this date — pass an explicit
+   * date to the operation to query an earlier partition.
+   */
   date: string;
   /** Epoch milliseconds, accepted as-is by the operations' time parsing. */
   startMillis: number;
@@ -26,7 +31,7 @@ export function windowFromSince(since: string | undefined, defaultDuration: stri
   const duration = parseDuration(since ?? defaultDuration);
   const endMillis = now();
   const startMillis = endMillis - duration;
-  return { date: millisToYmd(startMillis), startMillis, endMillis };
+  return { date: millisToYmd(endMillis), startMillis, endMillis };
 }
 
 export function toOperationTimeInput(window: TimeWindow): Record<string, string> {
@@ -41,11 +46,11 @@ export function durationMinutes(since: string | undefined, defaultDuration: stri
   return Math.max(1, Math.ceil(parseDuration(since ?? defaultDuration) / 60_000));
 }
 
-export function parseLimit(value: string | undefined, fallback: number): number {
+export function parseLimit(value: string | undefined, fallback: number, optionName = "--limit"): number {
   if (value === undefined) return fallback;
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed <= 0) {
-    throw new CliUsageError(`Invalid --limit '${value}'. Use a positive integer.`);
+    throw new CliUsageError(`Invalid ${optionName} '${value}'. Use a positive integer.`);
   }
   return parsed;
 }

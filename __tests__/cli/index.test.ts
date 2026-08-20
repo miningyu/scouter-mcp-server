@@ -11,6 +11,12 @@ describe("runCli", () => {
     expect(io.stdoutText()).toContain("tools run");
   });
 
+  it("prints help when --help appears after a subcommand", async () => {
+    const io = captureIo();
+    expect(await runCli(["tools", "run", "get_thread_dump", "--help"], io, stubDeps())).toBe(EXIT_OK);
+    expect(io.stdoutText()).toContain("Exit codes");
+  });
+
   it("prints help for --help", async () => {
     const io = captureIo();
     expect(await runCli(["--help"], io, stubDeps())).toBe(EXIT_OK);
