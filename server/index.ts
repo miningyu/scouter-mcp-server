@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { client, closeClient } from "../client/index.js";
 import { registerAllTools } from "../tools/index.js";
 
 export function createServer(): { server: McpServer; cleanup: () => void } {
@@ -11,6 +12,6 @@ export function createServer(): { server: McpServer; cleanup: () => void } {
 
   return {
     server,
-    cleanup: () => {},
+    cleanup: () => { void closeClient(client); },
   };
 }

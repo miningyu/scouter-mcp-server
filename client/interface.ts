@@ -15,6 +15,9 @@ export class UnsupportedOperationError extends Error {
 }
 
 export interface ScouterClient {
+  /** Releases any connection held by the client. HTTP is stateless, so it is optional. */
+  close?(): Promise<void>;
+
   // --- Object ---
   getObjects(): Promise<ScouterObject[]>;
 

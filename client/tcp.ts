@@ -22,6 +22,10 @@ export class TcpClient implements ScouterClient {
     this.conn = new ScouterTcpConnection(host, port, userId, password);
   }
 
+  async close(): Promise<void> {
+    await this.conn.close();
+  }
+
   private async req(cmd: string, params?: Record<string, SValue>): Promise<Pack[]> {
     return this.conn.request(cmd, params);
   }

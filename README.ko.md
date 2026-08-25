@@ -4,13 +4,24 @@
 
 [English](./README.md)
 
-[Scouter APM](https://github.com/scouter-project/scouter)을 AI 에이전트와 연결하는 MCP (Model Context Protocol) 서버입니다. 자연어로 실시간 애플리케이션 성능 데이터를 조회하고 분석할 수 있습니다.
+[Scouter APM](https://github.com/scouter-project/scouter)을 AI 에이전트와 사람에게 연결합니다. 자연어로도, 명령줄로도 실시간 애플리케이션 성능 데이터를 조회하고 분석할 수 있습니다.
 
 *"지난 1시간 중 가장 느린 SQL은?"*, *"TPS가 떨어지는 이유가 뭐야?"* 같은 질문에 실제 모니터링 데이터를 기반으로 답변합니다.
 
+같은 패키지가 세 가지 진입 경로를 제공하며, 모두 하나의 공통 operation 계층을 사용합니다.
+
+```
+MCP 지원 AI     ──▶ MCP  ─┐
+                          ├──▶ operation registry ──▶ ScouterClient ──▶ Scouter
+사람            ──▶ CLI  ─┤
+Skill 지원 AI   ──▶ CLI  ─┘
+```
+
 ## 주요 기능
 
-- **32개 도구** — Scouter API 전체 영역 커버
+- **31개 operation** — Scouter API 전체 영역 커버. MCP 도구와 CLI 명령으로 동시에 노출
+- **내장 CLI** — `doctor`, `tools list/describe/run` 및 `overview`·`diagnose`·`transactions` 단축 명령
+- **companion Skill** — MCP 없이 CLI만으로 조사할 수 있는 Skill 동봉
 - **듀얼 프로토콜** — HTTP (REST API) 또는 TCP (바이너리 프로토콜) 연결
 - **자동 해시 해석** — Scouter 내부 해시 ID를 SQL 쿼리, 서비스명, 에러 메시지 등 사람이 읽을 수 있는 텍스트로 자동 변환
 - **실행 가능한 SQL** — 트랜잭션 프로필에서 바인드 파라미터가 치환된 SQL 제공, `EXPLAIN ANALYZE` 바로 실행 가능
@@ -21,7 +32,11 @@
 ### npx로 바로 실행 (설치 불필요)
 
 ```bash
-npx scouter-mcp-server
+# 인자 없음: 기존과 동일하게 stdio MCP 서버 시작
+npx -y scouter-mcp-server
+
+# 인자 있음: CLI 실행
+npx -y scouter-mcp-server doctor
 ```
 
 ### 또는 소스에서 직접 빌드
@@ -46,7 +61,7 @@ Scouter 수집 서버를 가리키도록 환경 변수를 설정합니다:
 | `SCOUTER_ENABLE_WRITE` | `true`로 설정 시 쓰기 도구 활성화 | *(비활성)* |
 | `SCOUTER_MASK_PII` | `false`로 설정 시 PII 마스킹 비활성화 (IP, 로그인, UserAgent, SQL 파라미터) | `true` |
 
-**HTTP 모드** (권장) — `SCOUTER_API_URL` 설정. 32개 도구 모두 지원 (쓰기 도구는 `SCOUTER_ENABLE_WRITE=true` 필요).
+**HTTP 모드** (권장) — `SCOUTER_API_URL` 설정. 31개 도구 모두 지원 (쓰기 도구는 `SCOUTER_ENABLE_WRITE=true` 필요).
 **TCP 모드** — `SCOUTER_TCP_HOST` 설정. 경량, webapp 불필요. 일부 관리 도구 미지원.
 
 > **참고:** 기본적으로 읽기 전용 도구(25개)만 등록됩니다. 쓰기 도구(`set_configure`, `set_alert_scripting`, `manage_kv_store`, `manage_shortener`, `control_thread`, `remove_inactive_objects`)를 사용하려면 `SCOUTER_ENABLE_WRITE=true`를 설정하세요.
@@ -123,6 +138,113 @@ claude mcp add scouter -s user \
   -- npx -y scouter-mcp-server
 ```
 
+## 명령줄 사용법
+
+이 실행 파일은 MCP 서버이자 CLI입니다. 인자 없이 실행하면 예전과 똑같이 stdio MCP 서버가 시작되고,
+인자를 하나라도 주면 CLI 명령으로 동작합니다.
+
+조회 결과는 **stdout**, 로그와 오류 설명은 **stderr**로 나갑니다.
+
+### 먼저 연결 상태를 확인한다
+
+```bash
+npx -y scouter-mcp-server doctor
+npx -y scouter-mcp-server doctor --json
+```
+
+`doctor`는 선택된 프로토콜, 자격증명이 가려진 접속 주소, `SCOUTER_API_ID` / `SCOUTER_API_PASSWORD`
+설정 여부, 그리고 Scouter가 실제로 응답하는지를 보고합니다. 모든 항목이 통과하면 종료 코드 0,
+하나라도 실패하면 0이 아닌 코드로 끝납니다. 비밀번호 값은 절대 출력하지 않습니다.
+
+### 아무 operation이나 찾아서 실행한다
+
+```bash
+npx -y scouter-mcp-server tools list --json
+npx -y scouter-mcp-server tools describe get_system_overview --json
+npx -y scouter-mcp-server tools run search_transactions --input '{"max_count":20}'
+```
+
+`tools list`는 현재 환경에서 실행 가능한 operation만 보여줍니다. `SCOUTER_ENABLE_WRITE=true`가
+아니면 쓰기 operation은 목록에서 빠집니다(`--all`을 주면 실행 불가 표시와 함께 전부 보여줍니다).
+`tools run`은 Scouter를 호출하기 전에 `--input`을 해당 operation의 Zod 스키마로 검증하므로,
+입력 오타는 서버에 가기 전에 읽을 수 있는 메시지로 걸러집니다.
+
+### 자주 쓰는 단축 명령
+
+```bash
+npx -y scouter-mcp-server overview --json
+npx -y scouter-mcp-server diagnose --since 30m --json
+npx -y scouter-mcp-server transactions search --since 10m --limit 20 --json
+npx -y scouter-mcp-server transactions get <txid> --json
+```
+
+`--since`는 숫자 뒤에 `s`, `m`, `h`, `d`를 붙여 씁니다. `--json` 없이 실행하면 짧은 요약을,
+`--json`을 주면 operation 결과 원본을 그대로 출력합니다.
+
+### 결과가 큰 경우
+
+```bash
+npx -y scouter-mcp-server transactions get <txid> --output ./tx.json
+```
+
+`--output`을 주면 전체 JSON은 파일로 저장되고, stdout에는 저장 경로와 바이트 수, 요약만 남습니다.
+큰 프로필이 터미널이나 에이전트 컨텍스트를 뒤덮는 것을 막아 줍니다.
+
+### 옵션과 종료 코드
+
+| 옵션 | 의미 |
+|---|---|
+| `--json` | 요약 대신 기계가 읽을 수 있는 결과 출력 |
+| `--input <json>` | operation 입력. 스키마로 검증됨 |
+| `--output <file>` | 결과를 파일에 저장. stdout에는 경로와 요약만 |
+| `--yes` | destructive operation 실행 승인 |
+| `--all` | 실행 불가한 operation도 함께 표시 (`tools list`) |
+| `--since <기간>` | 상대 시간 범위 (`45s`, `30m`, `2h`, `1d`) |
+| `--limit <n>` | 반환할 최대 트랜잭션 수 |
+
+| 종료 코드 | 의미 |
+|---|---|
+| `0` | 성공 |
+| `1` | Scouter 접속·조회 실패 |
+| `2` | 잘못된 명령줄 또는 스키마 검증에 실패한 입력 |
+| `3` | 현재 환경에서 허용되지 않는 operation |
+
+### 쓰기 작업 안전장치
+
+쓰기 권한 검사는 MCP 등록 시점뿐 아니라 **공통 실행 단계**에서도 이뤄집니다. CLI로 우회할 수 없습니다.
+
+- 쓰기 operation은 `SCOUTER_ENABLE_WRITE=true`가 아니면 거부됩니다(종료 코드 3).
+- destructive operation(`control_thread`, `remove_inactive_objects`)은 추가로 `--yes`가 필요합니다.
+
+```bash
+SCOUTER_ENABLE_WRITE=true npx -y scouter-mcp-server \
+  tools run control_thread --yes --input '{"obj_hash":123,"thread_id":45,"action":"interrupt"}'
+```
+
+## Companion Skill
+
+`skills/scouter/`는 MCP 대신 셸 명령을 실행하는 에이전트를 위한 Skill입니다. 언제 Scouter를 봐야
+하는지, `doctor`를 먼저 실행해야 한다는 것, overview에서 개별 트랜잭션까지 좁혀 가는 순서, 결과
+크기를 줄이는 방법, 그리고 쓰기 작업 전에 반드시 사용자에게 물어야 한다는 것을 설명합니다.
+
+에이전트의 skills 폴더로 디렉터리를 복사해서 설치합니다.
+
+```bash
+# 저장소를 clone한 경우
+cp -r skills/scouter ~/.claude/skills/
+
+# npm 설치본에서 가져오는 경우
+cp -r "$(npm root -g)/scouter-mcp-server/skills/scouter" ~/.claude/skills/
+```
+
+그다음 평소 말투로 요청하면 됩니다.
+
+> 결제 API가 14시쯤부터 느려졌어. 원인 좀 봐줘.
+
+에이전트는 `doctor` → `diagnose` → 느린 트랜잭션 상세 순으로 좁혀 갑니다. 쓰기나 destructive
+명령은 반드시 먼저 물어보고 실행하며, 설정이 빠졌을 때는 값을 노출하지 않고 필요한 환경 변수
+이름만 알려 줍니다.
+
 ## 도구 목록
 
 ### 성능 조사
@@ -194,19 +316,22 @@ claude mcp add scouter -s user \
 ## 아키텍처
 
 ```
-┌─────────────────────────────┐
-│  AI 에이전트 (Claude 등)     │
-│  "앱이 왜 느려?"             │
-└──────────┬──────────────────┘
-           │ MCP (stdio)
-┌──────────▼──────────────────┐
-│  Scouter MCP Server         │
-│  ┌────────────────────────┐ │
-│  │ Tool Hub (31개 도구)   │ │
-│  │ 해시 해석 엔진          │ │
-│  │ SQL 파라미터 바인딩     │ │
-│  └────────────────────────┘ │
-└──────────┬──────────────────┘
+┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+│ MCP 지원 AI      │  │ 사람 (셸)        │  │ Skill 지원 AI    │
+└────────┬─────────┘  └────────┬─────────┘  └────────┬─────────┘
+         │ MCP (stdio)         │ CLI                 │ CLI
+┌────────▼─────────────────────▼─────────────────────▼─────────┐
+│  scouter-mcp-server                                          │
+│  ┌────────────────────┐   ┌───────────────────────────────┐  │
+│  │ MCP tool 어댑터    │   │ CLI 명령                      │  │
+│  └─────────┬──────────┘   └───────────────┬───────────────┘  │
+│            └───────────────┬──────────────┘                  │
+│  ┌─────────────────────────▼─────────────────────────────┐   │
+│  │ Operation registry (31개 operation)                   │   │
+│  │ 쓰기·destructive 가드 · 해시 해석 엔진                │   │
+│  │ SQL 파라미터 바인딩                                   │   │
+│  └───────────────────────────────────────────────────────┘   │
+└──────────┬───────────────────────────────────────────────────┘
            │ HTTP REST 또는 TCP Binary
 ┌──────────▼──────────────────┐
 │  Scouter 수집 서버           │
@@ -223,15 +348,32 @@ claude mcp add scouter -s user \
 
 ```
 scouter.mcp/
-├── index.ts                 # 진입점 — stdio 전송 + SIGINT 처리
+├── index.ts                 # 진입점 — 인자 없으면 MCP, 인자 있으면 CLI
+├── operations/              # MCP·CLI가 공유하는 transport 중립 핵심
+│   ├── definition.ts        # OperationContext, OperationDefinition, 오류 타입
+│   ├── context.ts           # client 주입 + objType 탐색 캐시
+│   ├── execute.ts           # 단일 실행 경로 — 권한·승인·입력 검증
+│   ├── registry.ts          # 31개 operation 단일 목록
+│   ├── shared-utils.ts      # 해시 해석, SQL 파라미터 바인딩, PII 마스킹
+│   └── ... (31개 operation 파일)
+├── cli/
+│   ├── index.ts             # runCli() — 명령 분기, 오류 → 종료 코드 매핑
+│   ├── args.ts              # 의존성 없는 최소 argv 파서
+│   ├── output.ts            # stdout/stderr 분리, --output 파일 저장, 종료 코드
+│   ├── doctor.ts            # 설정·연결 점검
+│   ├── schema-info.ts       # `tools describe`용 Zod 스키마 분석
+│   └── commands/            # tools list/describe/run + overview/diagnose/transactions
 ├── server/
-│   └── index.ts             # createServer() 팩토리 → { server, cleanup }
+│   ├── index.ts             # createServer() 팩토리 → { server, cleanup }
+│   ├── stdio.ts             # startStdioServer() — stdio 전송 + SIGINT 처리
+│   └── mcp-tool.ts          # operation 결과를 MCP tool content로 변환
 ├── tools/
-│   ├── index.ts             # registerAllTools() 허브 — 전체 도구 명시적 import
-│   ├── shared-utils.ts      # 해시 해석, SQL 파라미터 바인딩
-│   └── ... (31개 도구 파일)
+│   ├── index.ts             # registerAllTools() — registry에서 바로 등록
+│   ├── shared-utils.ts      # MCP 응답 빌더 + operations/shared-utils 재export
+│   └── ... (31개 얇은 MCP 어댑터)
+├── skills/scouter/          # Companion Skill (SKILL.md + references/)
 ├── client/
-│   ├── index.ts             # 클라이언트 파사드 — client, jsonStringify, catchWarn 등
+│   ├── index.ts             # 클라이언트 파사드 — client, createClient, closeClient, describeConnection
 │   ├── interface.ts         # ScouterClient 인터페이스 + 타입
 │   ├── http.ts              # HTTP/REST 구현체
 │   └── tcp.ts               # TCP 바이너리 프로토콜 구현체
@@ -258,18 +400,23 @@ npm run test:coverage  # 커버리지 리포트
 npm run build          # 프로덕션 빌드
 ```
 
-### 새 도구 추가하기
+### 새 operation 추가하기
 
-1. `tools/my-tool.ts` 파일 생성, `register(server: McpServer)` 함수를 `server.registerTool()`로 구현
-2. `tools/index.ts`에 `import { register as registerMyTool } from "./my-tool.js"` 추가
-3. `registerAllTools()` 안에서 `registerMyTool(server)` 호출
-4. 해시 해석과 SQL 바인딩은 `shared-utils.ts` 활용
+operation은 한 번만 작성하면 MCP와 CLI 양쪽에 모두 노출됩니다.
+
+1. `operations/my-operation.ts`를 만들고 `operation = defineOperation({ name, title, description,
+   inputShape, annotations, execute })`를 export합니다. `execute(ctx, input)`은 MCP content나 CLI
+   문자열이 아니라 일반 객체를 반환해야 합니다.
+2. `operations/registry.ts`에 등록합니다.
+3. `tools/my-operation.ts`에 네 줄짜리 MCP 어댑터를 만들어 `register` / `params` export를 유지합니다.
+4. 해시 해석·SQL 바인딩·PII 마스킹은 `operations/shared-utils.ts`를 쓰고, Scouter 호출은 client를
+   직접 import하지 말고 `ctx.client`로 합니다.
 
 ## 프로토콜 상세
 
 ### HTTP 모드
 
-Scouter webapp REST API(`/scouter/v1/*`)에 연결합니다. 설정 변경, 알림 스크립팅, 스레드 제어 등 쓰기 작업을 포함한 32개 도구 모두 지원합니다.
+Scouter webapp REST API(`/scouter/v1/*`)에 연결합니다. 설정 변경, 알림 스크립팅, 스레드 제어 등 쓰기 작업을 포함한 31개 도구 모두 지원합니다.
 
 인증: 사용자명/비밀번호 로그인 후 Bearer 토큰 자동 갱신 (401 시 재로그인).
 

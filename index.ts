@@ -1,20 +1,17 @@
 #!/usr/bin/env node
 
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { createServer } from "./server/index.js";
+import { runCli } from "./cli/index.js";
+import { startStdioServer } from "./server/stdio.js";
 
-const { server, cleanup } = createServer();
-
+/** No arguments keeps the long-standing behaviour: a stdio MCP server. */
 async function main() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.error("Scouter MCP Server running on stdio");
+  const argv = process.argv.slice(2);
+  if (argv.length === 0) {
+    await startStdioServer();
+    return;
+  }
+  process.exitCode = await runCli(argv);
 }
-
-process.on("SIGINT", () => {
-  cleanup();
-  process.exit(0);
-});
 
 main().catch((error) => {
   console.error("Fatal error:", error);
